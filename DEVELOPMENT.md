@@ -1,5 +1,7 @@
 # Development Guide
 
+This independently maintained project prioritizes the MX Master 4 experience on Windows. Start with [README.md](README.md) for the verified hardware scope and [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md) for the additions. On Windows, install `requirements-master4.txt`; the other platform sections below describe inherited implementations and do not imply current hardware validation.
+
 This document contains the technical details a developer needs to navigate Mouser. The user-facing tour lives in [README.md](README.md); this guide covers how the codebase is wired together, how the platform-specific hooks behave, and how to build / debug locally.
 
 ## Contents

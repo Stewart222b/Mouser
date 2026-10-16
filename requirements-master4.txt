@@ -1,0 +1,3 @@
+-r requirements.txt
+# Qt runtime used for the validated MX Master 4 Windows builds.
+PySide6==6.11.1

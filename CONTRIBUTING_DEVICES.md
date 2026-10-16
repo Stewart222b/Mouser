@@ -1,8 +1,9 @@
 # Contributing a New Device to Mouser
 
-Mouser is built around the MX Master 3S because that is the only mouse the
-maintainer owns.  If you have a different Logitech HID++ mouse and want Mouser
-to support it, this guide walks you through the process.
+This project prioritizes MX Master 4 improvements, currently validated on
+Windows over Bluetooth. Existing Logitech HID++ device support is retained.
+Contributions for other devices are welcome, but require a reproducible report
+and hardware validation; this guide describes the inherited discovery process.
 
 ---
 
@@ -15,7 +16,7 @@ to support it, this guide walks you through the process.
 5. The JSON blob on your clipboard describes every HID++ feature and
    reprogrammable control Mouser discovered on your device.
 
-Paste this JSON into your GitHub issue  it is the single most useful piece of information for adding support.
+Review the dump for personal or device identifiers before sharing it in a GitHub issue. Include only the details needed to reproduce the problem.
 
 ### What the dump contains
 

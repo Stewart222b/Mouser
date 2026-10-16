@@ -20,10 +20,11 @@ import time
 import urllib.request
 import zipfile
 
+from core.updater import DEFAULT_RELEASE_REPO
 from core.version import APP_VERSION
 
 
-APP_ID = "io.github.tombadash.mouser"
+APP_ID = "io.github.stewart222b.mouser"
 STABLE_CHANNEL = "stable"
 MANIFEST_SCHEMA_VERSION = 1
 DEFAULT_MANIFEST_NAME = "mouser-v{version}-update.json"
@@ -364,7 +365,7 @@ def fetch_json(url: str, *, timeout: float = 10.0):
         return json.loads(response.read().decode("utf-8-sig"))
 
 
-def manifest_url_for_release(tag: str, repo: str = "TomBadash/Mouser") -> str:
+def manifest_url_for_release(tag: str, repo: str = DEFAULT_RELEASE_REPO) -> str:
     override = os.environ.get(_UPDATE_MANIFEST_URL_ENV, "").strip()
     if override:
         return override
@@ -374,7 +375,7 @@ def manifest_url_for_release(tag: str, repo: str = "TomBadash/Mouser") -> str:
 def fetch_update_manifest_for_release(
     tag: str,
     *,
-    repo: str = "TomBadash/Mouser",
+    repo: str = DEFAULT_RELEASE_REPO,
     target_platform: str | None = None,
     timeout: float = 10.0,
     highest_trusted_build: int | None = None,

@@ -15,7 +15,7 @@ import urllib.request
 from core.version import APP_VERSION
 
 
-DEFAULT_RELEASE_REPO = "TomBadash/Mouser"
+DEFAULT_RELEASE_REPO = "Stewart222b/Mouser"
 _GITHUB_API = "https://api.github.com/repos/{repo}/releases/latest"
 _LATEST_RELEASE_URL_ENV = "MOUSER_UPDATE_LATEST_RELEASE_URL"
 _USER_AGENT = f"Mouser/{APP_VERSION}"

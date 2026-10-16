@@ -56,17 +56,17 @@ def _payload(**updates):
         "build_number": 30700,
         "expires_at": expires.isoformat().replace("+00:00", "Z"),
         "commit": "abc123",
-        "release_notes_url": "https://github.com/TomBadash/Mouser/releases/tag/v3.7.0",
+        "release_notes_url": "https://github.com/Stewart222b/Mouser/releases/tag/v3.7.0",
         "assets": {
             "windows-x64": {
                 "name": "Mouser-Windows.zip",
-                "url": "https://github.com/TomBadash/Mouser/releases/download/v3.7.0/Mouser-Windows.zip",
+                "url": "https://github.com/Stewart222b/Mouser/releases/download/v3.7.0/Mouser-Windows.zip",
                 "size": 123,
                 "sha256": "a" * 64,
             },
             "macos-arm64": {
                 "name": "Mouser-macOS.zip",
-                "url": "https://github.com/TomBadash/Mouser/releases/download/v3.7.0/Mouser-macOS.zip",
+                "url": "https://github.com/Stewart222b/Mouser/releases/download/v3.7.0/Mouser-macOS.zip",
                 "size": 456,
                 "sha256": "b" * 64,
             },
@@ -143,10 +143,10 @@ class UpdateInstallerTests(unittest.TestCase):
 
     def test_manifest_name_matches_release_url_contract(self):
         self.assertEqual(manifest_name_for_version("v3.7.0"), "mouser-v3.7.0-update.json")
-        self.assertTrue(
-            manifest_url_for_release("v3.7.0").endswith(
-                "/v3.7.0/mouser-v3.7.0-update.json"
-            )
+        self.assertEqual(
+            manifest_url_for_release("v3.7.0"),
+            "https://github.com/Stewart222b/Mouser/releases/download/"
+            "v3.7.0/mouser-v3.7.0-update.json",
         )
 
     def test_manifest_url_can_use_test_endpoint_override(self):
@@ -160,7 +160,7 @@ class UpdateInstallerTests(unittest.TestCase):
             )
 
     def test_fetch_json_accepts_utf8_bom_response(self):
-        payload = b'\xef\xbb\xbf{"schema": 1, "app_id": "io.github.tombadash.mouser"}'
+        payload = b'\xef\xbb\xbf{"schema": 1, "app_id": "io.github.stewart222b.mouser"}'
 
         with patch("urllib.request.urlopen", return_value=_FakeHTTPResponse(payload)):
             parsed = fetch_json("https://example.test/update.json")

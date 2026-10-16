@@ -1,3 +1,2 @@
--r requirements.txt
-# Match the Qt runtime shipped with the installed upstream v3.7.3 build.
-PySide6==6.11.1
+# Compatibility entry point for older local build commands.
+-r requirements-master4.txt

@@ -1,14 +1,16 @@
-# Mouser 定制功能与维护
+# Mouser 功能与维护
 
-这是 [TomBadash/Mouser](https://github.com/TomBadash/Mouser) 的社区 fork，保留上游 MIT 许可证和版权声明，不代表 Logitech 官方产品。
+本项目独立维护 MX Master 4 的使用体验，当前实机验证范围为 Windows 蓝牙连接。项目定位与来源说明见 [README.md](README.md)，原有 MIT 许可证保持不变。
 
 ## 分支与版本
 
-- `main`：保留上游主分支代码，不加入本 fork 的功能改动；上游对应分支名为 `master`。
-- `custom`：基于上游 `v3.7.3`，维护定制功能。本地版本标识为 `3.7.3+ctrlclick.5`。
-- 不因创建 fork 自动发布二进制 Release。后续发布应使用带有定制标识的版本，明确对应的上游版本。
+- `main`：日常开发、修复和体验改进的主分支。
+- 历史起点：一次完整的 `v3.7.3` 源码导入，之后仅保留本项目的改进提交；不在公开分支中保留原项目开发历史。
+- 独立维护版本从 `3.7.4` 开始，包含之前 `3.7.3+ctrlclick.1` 至 `.5` 的改动。后续按本项目节奏递增，不与原项目版本建立对应关系。
 
-仓库中的源码修改不会自动替换已安装的程序。上游更新也不会自动合并到 `custom`。
+程序的 Release、更新清单和下载入口统一使用 `Stewart222b/Mouser`。更新清单身份为 `io.github.stewart222b.mouser`；保留现有配置路径以便升级。部分其他平台的历史系统标识仍保留，以免破坏已有启动集成。
+
+源码提交和 Actions Artifact 不等于正式 Release。只有显式创建发布版本时，才运行正式发布流程。
 
 ## 定制功能
 
@@ -66,29 +68,25 @@ python scripts/configure_ctrl_click.py --config "$env:APPDATA\Mouser\config.json
 
 ## 构建与检查
 
-Windows 使用 Python 3.12。`requirements-ctrlclick.txt` 将 Qt 固定到已验证的 PySide6 6.11.1，其余依赖沿用上游要求。
+Windows 使用 Python 3.12。`requirements-master4.txt` 将 Qt 固定到已验证的 PySide6 6.11.1，其余依赖使用 `requirements.txt`。旧的 `requirements-ctrlclick.txt` 作为兼容入口保留。
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements-ctrlclick.txt
-.venv\Scripts\python.exe -m unittest tests.test_ctrl_left_click tests.test_ctrl_click_profiles tests.test_mouse_mapping_haptics tests.test_screen_haptics tests.test_engine tests.test_key_simulator tests.test_spec_coverage
+.venv\Scripts\python.exe -m pip install -r requirements-master4.txt
+.venv\Scripts\python.exe -m unittest tests.test_ctrl_left_click tests.test_ctrl_click_profiles tests.test_mouse_mapping_haptics tests.test_screen_haptics tests.test_engine tests.test_key_simulator tests.test_spec_coverage tests.test_updater tests.test_update_installer
 .venv\Scripts\python.exe -m PyInstaller Mouser.spec --noconfirm
 ```
 
-输出为 `dist/Mouser/`，运行时必须保留整个目录，不能只复制 EXE。GitHub Actions 中的 **Custom Windows** 流程会在 `custom` 分支上传或手动触发时执行相关检查并生成便携包 Artifact；Artifact 不等于正式 Release。
+输出为 `dist/Mouser/`，运行时必须保留整个目录，不能只复制 EXE。GitHub Actions 中的 **Master4 Windows** 流程会在 `main` 分支上传或手动触发时执行相关检查并生成便携包 Artifact；Artifact 不等于正式 Release。
 
-已在 MX Master 4 蓝牙连接下人工确认 Ctrl＋左键跳转及前进、后退键震动。其余型号、编辑器和权限环境需要分别验证，不能从单一设备的结果推断全部兼容。自动检查使用模拟输入和模拟设备，不会主动点击真实桌面。
+已在 Windows 的 MX Master 4 蓝牙连接下人工确认 Cursor 中 Ctrl＋左键跳转、前进／后退键震动、中键按下立即震动，以及跨屏单下轻碰。其余型号、编辑器和权限环境需要分别验证，不能从单一设备的结果推断全部兼容。自动检查使用模拟输入和模拟设备，不会主动点击真实桌面。
 
-## 同步上游
+## 独立维护与可选的外部修复
 
-```bash
-git remote add upstream https://github.com/TomBadash/Mouser.git
-git fetch upstream --tags
-git switch main
-git merge --ff-only upstream/master
-git push origin main
-git switch custom
-git merge main
-```
+不自动合并原项目更新，也不要求定期追齐其版本。优先解决 MX Master 4 的具体体验问题。
 
-合并后重新运行测试、打包并进行实体鼠标验证，再发布新的定制版本。优先将通用修复整理为独立提交，便于以后向上游提出 PR。
+脱离 GitHub fork 关系不影响 Git 获取其他公开仓库的提交。将来确有需要时，可临时添加原项目 remote、获取提交，再通过 `git cherry-pick` 引入经过审查的修复；处理依赖和冲突后，重新检查并进行设备验证。此操作按需进行，不作为默认更新流程。
+
+个人配置、运行日志、设备发现快照、凭据和本机构建产物不提交到公开仓库。公开示例只保留通用应用名称和可复现的设置方法。
+
+历史整理只改变提交关系和相应说明，保留完整源码、原许可证与来源致谢。原始开发历史已单独备份，不作为公开分支维护。

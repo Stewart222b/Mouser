@@ -7,7 +7,9 @@ body:
     attributes:
       value: |
         Thanks for taking the time to report a bug! Please fill out the sections
-        below so we can reproduce and fix the issue.
+        below so we can reproduce and fix the issue. This project prioritizes
+        MX Master 4 on Windows. Remove personal information and sensitive paths
+        from any material you share.
 
   - type: input
     id: mouser-version
@@ -15,10 +17,11 @@ body:
       label: Mouser version
       description: >
         Which version of Mouser are you using? Check the release you downloaded
-        from the [releases page](https://github.com/TomBadash/Mouser/releases),
+        from this project's [releases](https://github.com/Stewart222b/Mouser/releases)
+        or [Actions builds](https://github.com/Stewart222b/Mouser/actions/workflows/custom-windows.yml),
         the version shown inside the app, or the exact asset filename you ran.
         If you are running from source or a self-built package, say that here too.
-      placeholder: "e.g. v3.5.3, source checkout, or self-built from main"
+      placeholder: "e.g. v3.7.4, source checkout, or self-built from main"
     validations:
       required: true
 
@@ -27,7 +30,8 @@ body:
     attributes:
       label: How are you running Mouser?
       options:
-        - Official GitHub release asset
+        - This project's GitHub release asset
+        - This project's GitHub Actions artifact
         - Run from source (`python main_qml.py`)
         - Self-built app / executable
         - Other

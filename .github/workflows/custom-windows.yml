@@ -1,10 +1,10 @@
-name: Custom Windows
+name: Master4 Windows
 
 on:
   push:
-    branches: [custom]
+    branches: [main]
   pull_request:
-    branches: [custom]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -19,22 +19,25 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: python -m pip install -r requirements-ctrlclick.txt
-      - name: Test custom input, haptics and packaging
+        run: python -m pip install -r requirements-master4.txt
+      - name: Test input, haptics, updates and packaging
         run: >-
           python -m unittest
           tests.test_ctrl_left_click tests.test_ctrl_click_profiles
           tests.test_mouse_mapping_haptics tests.test_screen_haptics tests.test_engine
           tests.test_key_simulator tests.test_spec_coverage
+          tests.test_updater tests.test_update_installer
       - name: Build portable app
         run: python -m PyInstaller Mouser.spec --noconfirm
-      - name: Include license and customization notes
+      - name: Include license and project documentation
         shell: pwsh
         run: |
           Copy-Item -LiteralPath LICENSE -Destination dist/Mouser/LICENSE
+          Copy-Item -LiteralPath README.md -Destination dist/Mouser/README.md
+          Copy-Item -LiteralPath ACKNOWLEDGMENTS.md -Destination dist/Mouser/ACKNOWLEDGMENTS.md
           Copy-Item -LiteralPath CUSTOMIZATIONS.md -Destination dist/Mouser/CUSTOMIZATIONS.md
-          Compress-Archive -Path dist/Mouser -DestinationPath Mouser-custom-Windows.zip
+          Compress-Archive -Path dist/Mouser -DestinationPath Mouser-Windows.zip
       - uses: actions/upload-artifact@v7
         with:
-          name: Mouser-custom-Windows
-          path: Mouser-custom-Windows.zip
+          name: Mouser-Master4-Windows
+          path: Mouser-Windows.zip

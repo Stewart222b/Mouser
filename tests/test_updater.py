@@ -46,7 +46,7 @@ class UpdaterTests(unittest.TestCase):
     def test_fetch_latest_release_parses_github_response(self):
         payload = {
             "tag_name": "v3.7.1",
-            "html_url": "https://github.com/TomBadash/Mouser/releases/tag/v3.7.1",
+            "html_url": "https://github.com/Stewart222b/Mouser/releases/tag/v3.7.1",
             "name": "Mouser v3.7.1",
             "published_at": "2026-05-13T00:00:00Z",
         }
@@ -57,19 +57,19 @@ class UpdaterTests(unittest.TestCase):
             release,
             LatestRelease(
                 tag_name="v3.7.1",
-                html_url="https://github.com/TomBadash/Mouser/releases/tag/v3.7.1",
+                html_url="https://github.com/Stewart222b/Mouser/releases/tag/v3.7.1",
                 name="Mouser v3.7.1",
                 published_at="2026-05-13T00:00:00Z",
             ),
         )
         request = mocked.call_args.args[0]
-        self.assertIn("TomBadash/Mouser", request.full_url)
+        self.assertIn("Stewart222b/Mouser", request.full_url)
         self.assertEqual(request.get_header("User-agent"), f"Mouser/{APP_VERSION}")
 
     def test_check_latest_release_accepts_utf8_bom_response(self):
         payload = (
             b'\xef\xbb\xbf{"tag_name":"v3.7.1",'
-            b'"html_url":"https://github.com/TomBadash/Mouser/releases/tag/v3.7.1"}'
+            b'"html_url":"https://github.com/Stewart222b/Mouser/releases/tag/v3.7.1"}'
         )
 
         with patch("urllib.request.urlopen", return_value=_FakeResponse(payload)):
@@ -106,7 +106,7 @@ class UpdaterTests(unittest.TestCase):
     def test_fetch_latest_release_ignores_drafts_and_prereleases(self):
         payload = {
             "tag_name": "v3.8.0-beta.1",
-            "html_url": "https://github.com/TomBadash/Mouser/releases/tag/v3.8.0-beta.1",
+            "html_url": "https://github.com/Stewart222b/Mouser/releases/tag/v3.8.0-beta.1",
             "prerelease": True,
         }
         with patch("urllib.request.urlopen", return_value=_FakeResponse(payload)):
@@ -159,7 +159,7 @@ class UpdaterTests(unittest.TestCase):
     def test_check_latest_release_sends_conditional_headers_and_persists_cache(self):
         payload = {
             "tag_name": "v3.7.1",
-            "html_url": "https://github.com/TomBadash/Mouser/releases/tag/v3.7.1",
+            "html_url": "https://github.com/Stewart222b/Mouser/releases/tag/v3.7.1",
         }
         state = UpdateCheckState(
             etag='"old"',
@@ -194,7 +194,7 @@ class UpdaterTests(unittest.TestCase):
     def test_check_latest_release_handles_not_modified(self):
         state = UpdateCheckState(etag='"new"', last_check=1.0)
         error = urllib.error.HTTPError(
-            "https://api.github.com/repos/TomBadash/Mouser/releases/latest",
+            "https://api.github.com/repos/Stewart222b/Mouser/releases/latest",
             304,
             "Not Modified",
             {},
@@ -229,7 +229,7 @@ class UpdaterTests(unittest.TestCase):
     def test_check_latest_release_manual_bypasses_automatic_interval(self):
         payload = {
             "tag_name": "v3.7.1",
-            "html_url": "https://github.com/TomBadash/Mouser/releases/tag/v3.7.1",
+            "html_url": "https://github.com/Stewart222b/Mouser/releases/tag/v3.7.1",
         }
         state = UpdateCheckState(last_check=100.0)
 
@@ -248,7 +248,7 @@ class UpdaterTests(unittest.TestCase):
 
     def test_check_latest_release_obeys_retry_after_backoff(self):
         error = urllib.error.HTTPError(
-            "https://api.github.com/repos/TomBadash/Mouser/releases/latest",
+            "https://api.github.com/repos/Stewart222b/Mouser/releases/latest",
             403,
             "rate limited",
             {"Retry-After": "30"},

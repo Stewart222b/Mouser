@@ -6,11 +6,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        Want Mouser to support your Logitech mouse? The device info dump is the
-        single most useful thing you can provide.
+        This project prioritizes the MX Master 4 experience on Windows. Support
+        for other devices depends on community contributions and hardware testing.
+        Review device info for personal or device identifiers before sharing.
 
         **Before opening this issue**, check
-        [CONTRIBUTING_DEVICES.md](https://github.com/TomBadash/Mouser/blob/master/CONTRIBUTING_DEVICES.md)
+        [CONTRIBUTING_DEVICES.md](https://github.com/Stewart222b/Mouser/blob/main/CONTRIBUTING_DEVICES.md)
         for the full guide on how device support works. If you are able to
         submit a PR yourself, even better!
 

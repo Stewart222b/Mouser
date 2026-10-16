@@ -33,13 +33,18 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-master4.txt
 
       - name: Build with PyInstaller
         run: pyinstaller Mouser.spec --noconfirm
 
       - name: Create archive
-        run: Compress-Archive -Path dist\Mouser -DestinationPath Mouser-Windows.zip
+        run: |
+          Copy-Item -LiteralPath LICENSE -Destination dist/Mouser/LICENSE
+          Copy-Item -LiteralPath README.md -Destination dist/Mouser/README.md
+          Copy-Item -LiteralPath ACKNOWLEDGMENTS.md -Destination dist/Mouser/ACKNOWLEDGMENTS.md
+          Copy-Item -LiteralPath CUSTOMIZATIONS.md -Destination dist/Mouser/CUSTOMIZATIONS.md
+          Compress-Archive -Path dist\Mouser -DestinationPath Mouser-Windows.zip
 
       - uses: actions/upload-artifact@v7
         with:
