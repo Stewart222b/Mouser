@@ -1,0 +1,1118 @@
+"""
+Locale Manager — provides i18n support for the QML UI.
+Supports English (en), Simplified Chinese (zh_CN), and Traditional Chinese (zh_TW).
+Exposed to QML as the context property `lm`.
+"""
+
+from PySide6.QtCore import QObject, Property, Signal, Slot
+
+_TRANSLATIONS = {
+    "en": {
+        # Navigation sidebar
+        "nav.mouse_profiles": "Mouse & Profiles",
+        "nav.point_scroll": "General",
+        "nav.haptic_feedback": "Haptic Feedback",
+        "nav.actions_ring": "Actions Ring",
+        "nav.about": "About",
+
+        # Haptic Feedback page
+        "haptic.title": "Haptic Feedback",
+        "haptic.subtitle": "Configure the haptic motor in your MX Master 4",
+        "haptic.level": "Feedback Intensity",
+        "haptic.level_desc": "Choose how strongly the haptic motor responds. Higher levels use more battery.",
+        "haptic.level_subtle": "Subtle",
+        "haptic.level_low": "Low",
+        "haptic.level_medium": "Medium",
+        "haptic.level_high": "High",
+        "haptic.test_title": "Test Haptic",
+        "haptic.test_desc": "Play a brief haptic pulse to preview the current intensity.",
+        "haptic.test": "Test",
+        "haptic.actions_title": "Haptic for Actions",
+        "haptic.actions_desc": "Pick which actions fire haptic feedback. Click an action to move it between Enabled and Available.",
+        "haptic.actions_enabled": "Enabled",
+        "haptic.actions_available": "Available",
+        "haptic.actions_empty": "No actions selected. Pick from Available.",
+        "haptic.buttons_title": "Haptic per Button",
+        "haptic.buttons_desc": "Choose which buttons fire haptic feedback, in addition to the action picker above.",
+        "haptic.buttons_enabled": "Enabled",
+        "haptic.buttons_available": "Available",
+        "haptic.buttons_empty": "No buttons selected. Pick from Available.",
+        "haptic.dedup_title": "Prevent Duplicate Haptics",
+        "haptic.dedup_desc": "When two haptic events fire close together, play only one pulse. Disable to allow both.",
+        "haptic.experimental_note": "Haptic feedback support is experimental. Some settings may not take effect until the protocol is fully documented.",
+
+        # Actions Ring page
+        "ring.title": "Actions Ring",
+        "ring.subtitle": "Configure hold delay and sector actions for the radial menu",
+        "ring.hold_delay": "Hold Delay",
+        "ring.hold_delay_desc": "How long to hold the thumb button before the ring appears",
+        "ring.slots_title": "Ring Actions",
+        "ring.slots_desc": "Choose the actions available in each sector of the radial menu",
+        "ring.slot_prefix": "Slot ",
+
+        # Mouse page — profile list
+        "mouse.profiles": "Profiles",
+        "mouse.all_applications": "All applications",
+        "mouse.add_app_profile": "Add App Profile",
+        "mouse.search_installed_apps": "Search installed apps or browse for one manually",
+        "mouse.delete_profile": "Delete Profile",
+
+        # Mouse page — connection / status
+        "mouse.connected": "Connected",
+        "mouse.not_connected": "Not Connected",
+        "mouse.waiting_for_connection": "Waiting for connection",
+        "mouse.connect_mouse": "Connect your Logitech mouse",
+        "mouse.connect_mouse_desc": "Mouser will detect the active device, unlock button mapping, and enable the correct layout mode as soon as the mouse is available.",
+        "mouse.layout_appears_auto": "Layout mode appears automatically",
+        "mouse.per_device_settings": "Per-device settings stay separate",
+
+        # Mouse page — header subtitles
+        "mouse.turn_on_mouse": "Turn on your Logitech mouse to start customizing buttons",
+        "mouse.click_dot": "Click a dot to configure its action",
+        "mouse.choose_layout": "Choose a layout mode below while we build a dedicated overlay",
+
+        # Mouse page — layout mode
+        "mouse.layout_mode": "Layout mode",
+        "mouse.experimental_override_prefix": "Experimental override active: ",
+        "mouse.experimental_override_suffix": ". Switch back to Auto-detect if the hotspot map does not line up.",
+        "mouse.interactive_layout_coming": "Interactive layout coming later",
+        "mouse.auto_detect": "Auto-detect",
+
+        # Mouse page — action / mapping helpers
+        "mouse.do_nothing": "Do Nothing",
+        "mouse.horizontal_scroll": "Horizontal Scroll",
+        "mouse.tap": "Tap: ",
+        "mouse.swipes_configured": "Swipes configured",
+        "mouse.installed_app": "Installed app",
+        "mouse.applications": "Applications",
+        "mouse.system_applications": "System Applications",
+        "mouse.macos_coreservices": "macOS CoreServices",
+
+        # Mouse page — action picker
+        "mouse.choose_action_suffix": " \u2014 Choose Action",
+        "mouse.configure_scroll_actions": "Configure separate actions for scroll left and right",
+        "mouse.configure_gesture": "Configure tap behavior plus swipe actions for the gesture button",
+        "mouse.select_button_action": "Select what happens when you use this button",
+        "mouse.scroll_left": "SCROLL LEFT",
+        "mouse.scroll_right": "SCROLL RIGHT",
+        "mouse.tap_action": "TAP ACTION",
+        "mouse.swipe_actions": "SWIPE ACTIONS",
+        "mouse.swipe_left": "Swipe left",
+        "mouse.swipe_right": "Swipe right",
+        "mouse.swipe_up": "Swipe up",
+        "mouse.swipe_down": "Swipe down",
+        "mouse.threshold": "Threshold",
+        "mouse.haptic_feedback": "Haptic",
+
+        # Mouse page — debug panel
+        "mouse.debug_events": "Debug Events",
+        "mouse.debug_events_desc": "Collects detected buttons, gestures, and mapped actions",
+        "mouse.clear": "Clear",
+        "mouse.clear_rec": "Clear Rec",
+        "mouse.on": "On",
+        "mouse.off": "Off",
+        "mouse.rec": "Rec",
+        "mouse.record": "Record",
+        "mouse.live_gesture_monitor": "Live Gesture Monitor",
+        "mouse.held": "Held",
+        "mouse.idle": "Idle",
+        "mouse.move_seen": "Move Seen",
+        "mouse.no_move": "No Move",
+        "mouse.debug_placeholder": "Turn on debug mode, then press buttons or use the gesture button.",
+        "mouse.gesture_placeholder": "Turn on Record and perform a few gesture attempts.",
+
+        # Mouse page — add app dialog
+        "mouse.add_app_dialog.title": "Add App Profile",
+        "mouse.add_app_dialog.desc": "Choose an app. Mouser will switch to this profile when that app is focused.",
+        "mouse.search_placeholder": "Search apps by name",
+        "mouse.browse": "Browse",
+        "mouse.search_results": "Search Results",
+        "mouse.suggested_apps": "Suggested Apps",
+        "mouse.no_matched": "No apps matched that search.",
+        "mouse.no_suggested": "No suggested apps available.",
+        "mouse.try_different": "Try a different name, or use Browse to choose the app directly.",
+        "mouse.use_search": "Use the search box above, or browse to choose an app directly.",
+        "mouse.create_profile": "Create Profile",
+        "mouse.cancel": "Cancel",
+
+        # Mouse page — delete dialog
+        "mouse.delete_dialog.title": "Delete profile?",
+        "mouse.delete_dialog.confirm_prefix": "Delete the profile for ",
+        "mouse.delete_dialog.confirm_suffix": "?",
+        "mouse.delete_dialog.desc": "This removes its custom button mappings. The default profile will remain.",
+
+        # Scroll / Settings page
+        "scroll.title": "General Settings",
+        "scroll.subtitle": "Adjust app preferences, pointer speed, screenshots, and scroll behaviour",
+        "scroll.pointer_speed": "Pointer Speed (DPI)",
+        "scroll.pointer_speed_desc": "Adjust the tracking speed of the sensor. Higher = faster pointer.",
+        "scroll.pointer_speed_desc_range_prefix": "Adjust the tracking speed of the sensor. This device supports ",
+        "scroll.pointer_speed_desc_range_to": " to ",
+        "scroll.pointer_speed_desc_range_suffix": " DPI.",
+        "scroll.presets": "Presets:",
+        "scroll.wheel_mode": "Scroll Wheel Mode",
+        "scroll.wheel_mode_desc": "Switch between tactile ratchet scrolling and smooth free-spin.",
+        "scroll.ratchet": "Ratchet",
+        "scroll.freespin": "Free Spin",
+        "scroll.smart_shift": "SmartShift",
+        "scroll.smart_shift_desc": "Automatically switches the scroll wheel from line-by-line scrolling to hyper-fast scrolling when you scroll faster.",
+        "scroll.sensitivity_value": "SENSITIVITY VALUE",
+        "scroll.scroll_mode_section": "SCROLL MODE",
+        "scroll.scroll_force": "Scroll Force",
+        "scroll.scroll_force_desc": "Adjust the ratchet firmness of the scroll wheel. Lower = smooth and subtle, higher = firm and precise.",
+        "scroll.scroll_force_value": "FORCE",
+        "scroll.appearance": "Appearance",
+        "scroll.appearance_desc": "Choose whether Mouser follows the system, stays light, or stays dark.",
+        "scroll.system": "System",
+        "scroll.light": "Light",
+        "scroll.dark": "Dark",
+        "scroll.startup": "Startup",
+        "scroll.startup_desc": "Start Mouser at login on supported desktop platforms, and choose whether the settings window opens on launch or Mouser stays in the system tray.",
+        "scroll.start_at_login": "Start at login",
+        "scroll.start_minimized": "Start minimized",
+        "scroll.screenshots": "Screenshots",
+        "scroll.screenshots_desc": "Choose where Mouser saves screenshot file actions. Clipboard actions are unaffected.",
+        "scroll.screenshots_save_to": "Save to",
+        "scroll.screenshots_choose": "Choose...",
+        "scroll.screenshots_default": "Use Default",
+        "scroll.screenshots_system_default": "System default location",
+        "scroll.check_for_updates": "Check for updates",
+        "scroll.check_for_updates_desc": "Notify when a newer Mouser release is available. Downloads and installation stay manual.",
+        "scroll.update_idle": "Mouser can check for new releases.",
+        "scroll.update_available": "Mouser %1 is available.",
+        "scroll.update_checking": "Checking for updates...",
+        "scroll.update_downloading": "Downloading the update...",
+        "scroll.update_verifying": "Verifying the update...",
+        "scroll.update_ready": "Ready to install after Mouser quits.",
+        "scroll.update_installing": "Installing update...",
+        "scroll.update_installed": "Update installed.",
+        "scroll.update_installed_version": "Updated to %1.",
+        "scroll.update_cancelled": "Update cancelled.",
+        "scroll.update_manual": "A new Mouser release is available. Download it from the release page and install manually.",
+        "scroll.update_manual_windows": "A new Mouser release is available. Download it from the release page and install manually on Windows.",
+        "scroll.update_manual_macos": "A new Mouser release is available. Download it from the release page and install manually on macOS.",
+        "scroll.update_manual_linux": "A new Mouser release is available. Download it from the release page and install manually on Linux.",
+        "scroll.update_no_asset": "No update package is available for this computer.",
+        "scroll.update_error": "Update could not be prepared.",
+        "scroll.update_error_check_first": "Check for updates first.",
+        "scroll.update_error_network_error": "Mouser could not reach the update service. Try again later.",
+        "scroll.update_error_metadata_missing": "Update details are not ready yet. Open the release page to install manually.",
+        "scroll.update_error_metadata_invalid": "Update details could not be read. Open the release page to install manually.",
+        "scroll.update_error_permission_denied": "Mouser does not have permission to prepare the update.",
+        "scroll.update_error_file_error": "Mouser could not write the update files.",
+        "scroll.update_error_install_failed": "The update did not finish. Open the release page to install manually.",
+        "scroll.update_error_sha256_mismatch": "The download did not pass verification. Try again later.",
+        "scroll.update_error_size_mismatch": "The download did not pass verification. Try again later.",
+        "scroll.update_error_expired_metadata": "Update details are out of date. Try again later.",
+        "scroll.update_error_older_build": "Mouser rejected an older update.",
+        "scroll.update_check": "Check",
+        "scroll.update_download": "Download",
+        "scroll.update_verify": "Verify",
+        "scroll.update_install": "Install",
+        "scroll.update_cancel": "Cancel",
+        "scroll.update_open_release": "Open release",
+        "scroll.scroll_speed": "Scroll Speed",
+        "scroll.scroll_speed_desc": "Adjust how fast the page scrolls per wheel click. 1.0\u00d7 is the system default.",
+        "scroll.scroll_speed_presets": "Presets:",
+        "scroll.smooth_scroll": "Smooth Scrolling",
+        "scroll.smooth_scroll_desc": "Add inertia so the page coasts to a stop after each wheel tick for a smoother feel.",
+        "scroll.scroll_direction": "Scroll Direction",
+        "scroll.scroll_direction_desc": "Invert the scroll direction (natural scrolling)",
+        "scroll.invert_vertical": "Invert vertical scroll",
+        "scroll.invert_horizontal": "Invert horizontal scroll",
+        "scroll.ignore_trackpad": "Ignore trackpad",
+        "scroll.ignore_trackpad_desc": "Only respond to mouse events, not trackpad or Magic Mouse",
+        "scroll.dpi_note": "DPI changes require HID++ communication with the device and will take effect after a short delay.",
+        "scroll.language": "Language",
+        "scroll.language_desc": "Choose the display language for the application.",
+
+        # Key-capture dialog
+        "key_capture.title": "Custom Shortcut",
+        "key_capture.placeholder": "e.g. super+shift+f5",
+        "key_capture.placeholder_recording": "Press your shortcut\u2026",
+        "key_capture.record_hint": "Press the keys you want. Modifier keys such as Win are captured here instead of reaching the system.",
+        "key_capture.type_hint": "Type the shortcut with + between keys, e.g. super+shift+f5.",
+        "key_capture.mode_type": "Type instead",
+        "key_capture.mode_record": "Record keys",
+        "key_capture.valid_keys": "Valid keys: ctrl/control, shift, alt/option/opt, super (aliases: cmd, command, meta, win, windows),\n0\u20139, a\u2013z, f1\u2013f24, space, tab, enter, esc, left, right, up, down, delete, ...",
+        "key_capture.reserved_warning": "The operating system may intercept this shortcut. It can still be saved, but behavior may vary by system.",
+        "key_capture.error.unsupported_key": "Choose a different key. %1 isn't available in Mouser.",
+        "key_capture.error.unknown_key": "We don't recognize: %1.",
+        "key_capture.error.duplicate_key": "Remove the duplicate key.",
+        "key_capture.error.multiple_main_keys": "Use one key with optional Ctrl, Shift, Alt, or Super.",
+        "key_capture.error.missing_main_key": "Add a key, such as A, F5, or Page Down.",
+        "key_capture.error.empty_segment": "Use + only between keys. Type plus for the + key.",
+        "key_capture.error.unsupported": "Shortcut is not supported.",
+        "key_capture.cancel": "Cancel",
+        "key_capture.confirm": "Confirm",
+
+        # System tray (used from Python)
+        "tray.open_settings": "Open Settings",
+        "tray.disable_remapping": "Disable Remapping",
+        "tray.enable_remapping": "Enable Remapping",
+        "tray.enable_debug": "Enable Debug Mode",
+        "tray.disable_debug": "Disable Debug Mode",
+        "tray.check_for_updates": "Check for Updates...",
+        "tray.open_latest_release": "Open Latest Release",
+        "tray.update_available": "Mouser {version} is available. Open the release page to download it.",
+        "tray.quit": "Quit Mouser",
+        "tray.tray_message": "Mouser is running in the system tray. Click the icon to open settings.",
+
+        # Accessibility dialog (macOS)
+        "accessibility.title": "Accessibility Permission Required",
+        "accessibility.text": (
+            "Mouser needs Accessibility permission to intercept "
+            "mouse button events.\n\n"
+            "macOS should have opened the System Settings prompt.\n"
+            "Please grant permission, then restart Mouser."
+        ),
+        "accessibility.info": "System Settings -> Privacy & Security -> Accessibility",
+
+        # Common dialog chrome
+        "dialog.close": "Close",
+
+        # About dialog
+        "about.title": "About Mouser",
+        "about.subtitle": "Runtime and build details for support and debugging.",
+        "about.version": "Version",
+        "about.build_mode": "Build mode",
+        "about.commit": "Commit",
+        "about.launch_path": "Launch path",
+        "about.close": "Close",
+
+        # Language names
+        "lang.en": "English",
+        "lang.zh_CN": "\u7b80\u4f53\u4e2d\u6587",
+        "lang.zh_TW": "\u7e41\u9ad4\u4e2d\u6587",
+    },
+
+    # ── Simplified Chinese ────────────────────────────────────────
+    "zh_CN": {
+        "nav.mouse_profiles": "\u9f20\u6807\u4e0e\u914d\u7f6e\u6587\u4ef6",
+        "nav.point_scroll": "\u901a\u7528",
+        "nav.haptic_feedback": "\u89e6\u89c9\u53cd\u9988",
+
+        "haptic.title": "\u89e6\u89c9\u53cd\u9988",
+        "haptic.subtitle": "\u914d\u7f6e MX Master 4 \u7684\u89e6\u89c9\u9a6c\u8fbe",
+        "haptic.level": "\u53cd\u9988\u5f3a\u5ea6",
+        "haptic.level_desc": "\u9009\u62e9\u89e6\u89c9\u9a6c\u8fbe\u7684\u54cd\u5e94\u5f3a\u5ea6\u3002\u8f83\u9ad8\u7ea7\u522b\u4f1a\u6d88\u8017\u66f4\u591a\u7535\u91cf\u3002",
+        "haptic.level_subtle": "\u5fae\u5f31",
+        "haptic.level_low": "\u4f4e",
+        "haptic.level_medium": "\u4e2d",
+        "haptic.level_high": "\u9ad8",
+        "haptic.test_title": "\u6d4b\u8bd5\u89e6\u89c9",
+        "haptic.test_desc": "\u64ad\u653e\u4e00\u6b21\u77ed\u6682\u7684\u89e6\u89c9\u8109\u51b2\u4ee5\u9884\u89c8\u5f53\u524d\u5f3a\u5ea6\u3002",
+        "haptic.test": "\u6d4b\u8bd5",
+        "haptic.actions_title": "\u52a8\u4f5c\u89e6\u89c9\u53cd\u9988",
+        "haptic.actions_desc": "\u9009\u62e9\u54ea\u4e9b\u52a8\u4f5c\u89e6\u53d1\u89e6\u89c9\u53cd\u9988\u3002\u70b9\u51fb\u52a8\u4f5c\u53ef\u5728\u201c\u5df2\u542f\u7528\u201d\u548c\u201c\u53ef\u9009\u201d\u4e4b\u95f4\u79fb\u52a8\u3002",
+        "haptic.actions_enabled": "\u5df2\u542f\u7528",
+        "haptic.actions_available": "\u53ef\u9009",
+        "haptic.actions_empty": "\u672a\u9009\u62e9\u4efb\u4f55\u52a8\u4f5c\u3002\u8bf7\u4ece\u201c\u53ef\u9009\u201d\u4e2d\u6dfb\u52a0\u3002",
+        "haptic.buttons_title": "\u6309\u952e\u89e6\u89c9\u53cd\u9988",
+        "haptic.buttons_desc": "\u9009\u62e9\u54ea\u4e9b\u6309\u952e\u89e6\u53d1\u89e6\u89c9\u53cd\u9988\uff0c\u4e0e\u4e0a\u65b9\u52a8\u4f5c\u9009\u62e9\u53e0\u52a0\u751f\u6548\u3002",
+        "haptic.buttons_enabled": "\u5df2\u542f\u7528",
+        "haptic.buttons_available": "\u53ef\u9009",
+        "haptic.buttons_empty": "\u672a\u9009\u62e9\u4efb\u4f55\u6309\u952e\u3002\u8bf7\u4ece\u201c\u53ef\u9009\u201d\u4e2d\u6dfb\u52a0\u3002",
+        "haptic.dedup_title": "\u9632\u6b62\u91cd\u590d\u89e6\u89c9",
+        "haptic.dedup_desc": "\u5f53\u4e24\u4e2a\u89e6\u89c9\u4e8b\u4ef6\u77ed\u65f6\u95f4\u5185\u540c\u65f6\u89e6\u53d1\u65f6\uff0c\u4ec5\u64ad\u653e\u4e00\u6b21\u3002\u7981\u7528\u5219\u5141\u8bb8\u4e24\u6b21\u90fd\u89e6\u53d1\u3002",
+        "haptic.experimental_note": "\u89e6\u89c9\u53cd\u9988\u652f\u6301\u4e3a\u5b9e\u9a8c\u6027\u529f\u80fd\u3002\u90e8\u5206\u8bbe\u7f6e\u53ef\u80fd\u5728\u534f\u8bae\u5b8c\u5168\u6587\u6863\u5316\u540e\u624d\u751f\u6548\u3002",
+
+        # Actions Ring page
+        "ring.title": "\u52a8\u4f5c\u73af",
+        "ring.subtitle": "\u914d\u7f6e\u5f84\u5411\u83dc\u5355\u7684\u6309\u4f4f\u5ef6\u8fdf\u548c\u6247\u533a\u52a8\u4f5c",
+        "ring.hold_delay": "\u6309\u4f4f\u5ef6\u8fdf",
+        "ring.hold_delay_desc": "\u6309\u4f4f\u62c7\u6307\u6309\u94ae\u591a\u957f\u65f6\u95f4\u540e\u663e\u793a\u52a8\u4f5c\u73af",
+        "ring.slots_title": "\u73af\u5f62\u52a8\u4f5c",
+        "ring.slots_desc": "\u9009\u62e9\u5f84\u5411\u83dc\u5355\u6bcf\u4e2a\u6247\u533a\u4e2d\u53ef\u7528\u7684\u52a8\u4f5c",
+        "ring.slot_prefix": "\u4f4d\u7f6e ",
+
+        "nav.actions_ring": "\u52a8\u4f5c\u73af",
+        "nav.about": "\u5173\u4e8e",
+
+        "mouse.profiles": "\u914d\u7f6e\u6587\u4ef6",
+        "mouse.all_applications": "\u6240\u6709\u5e94\u7528\u7a0b\u5e8f",
+        "mouse.add_app_profile": "\u6dfb\u52a0\u5e94\u7528\u914d\u7f6e",
+        "mouse.search_installed_apps": "\u641c\u7d22\u5df2\u5b89\u88c5\u7684\u5e94\u7528\u6216\u624b\u52a8\u6d4f\u89c8",
+        "mouse.delete_profile": "\u5220\u9664\u914d\u7f6e",
+
+        "mouse.connected": "\u5df2\u8fde\u63a5",
+        "mouse.not_connected": "\u672a\u8fde\u63a5",
+        "mouse.waiting_for_connection": "\u7b49\u5f85\u8fde\u63a5",
+        "mouse.connect_mouse": "\u8fde\u63a5\u60a8\u7684\u7f57\u6280\u9f20\u6807",
+        "mouse.connect_mouse_desc": "Mouser \u5c06\u68c0\u6d4b\u6d3b\u52a8\u8bbe\u5907\uff0c\u89e3\u9501\u6309\u952e\u6620\u5c04\uff0c\u5e76\u5728\u9f20\u6807\u53ef\u7528\u540e\u542f\u7528\u6b63\u786e\u7684\u5e03\u5c40\u6a21\u5f0f\u3002",
+        "mouse.layout_appears_auto": "\u5e03\u5c40\u6a21\u5f0f\u81ea\u52a8\u663e\u793a",
+        "mouse.per_device_settings": "\u6bcf\u4e2a\u8bbe\u5907\u7684\u8bbe\u7f6e\u72ec\u7acb\u4fdd\u5b58",
+
+        "mouse.turn_on_mouse": "\u6253\u5f00\u60a8\u7684\u7f57\u6280\u9f20\u6807\u4ee5\u5f00\u59cb\u81ea\u5b9a\u4e49\u6309\u952e",
+        "mouse.click_dot": "\u70b9\u51fb\u5706\u70b9\u914d\u7f6e\u5176\u52a8\u4f5c",
+        "mouse.choose_layout": "\u5728\u6211\u4eec\u6784\u5efa\u4e13\u5c5e\u8986\u76d6\u5c42\u7684\u540c\u65f6\uff0c\u8bf7\u5728\u4e0b\u65b9\u9009\u62e9\u5e03\u5c40\u6a21\u5f0f",
+
+        "mouse.layout_mode": "\u5e03\u5c40\u6a21\u5f0f",
+        "mouse.experimental_override_prefix": "\u5b9e\u9a8c\u6027\u8986\u76d6\u5df2\u6fc0\u6d3b\uff1a",
+        "mouse.experimental_override_suffix": "\u3002\u5982\u679c\u70ed\u70b9\u56fe\u4e0d\u5bf9\u9f50\uff0c\u8bf7\u5207\u6362\u56de\u81ea\u52a8\u68c0\u6d4b\u3002",
+        "mouse.interactive_layout_coming": "\u4ea4\u4e92\u5f0f\u5e03\u5c40\u5373\u5c06\u63a8\u51fa",
+        "mouse.auto_detect": "\u81ea\u52a8\u68c0\u6d4b",
+
+        "mouse.do_nothing": "\u65e0\u64cd\u4f5c",
+        "mouse.horizontal_scroll": "\u6c34\u5e73\u6eda\u52a8",
+        "mouse.tap": "\u70b9\u51fb\uff1a",
+        "mouse.swipes_configured": "\u5df2\u914d\u7f6e\u6ed1\u52a8",
+        "mouse.installed_app": "\u5df2\u5b89\u88c5\u7684\u5e94\u7528",
+        "mouse.applications": "\u5e94\u7528\u7a0b\u5e8f",
+        "mouse.system_applications": "\u7cfb\u7edf\u5e94\u7528\u7a0b\u5e8f",
+        "mouse.macos_coreservices": "macOS \u6838\u5fc3\u670d\u52a1",
+
+        "mouse.choose_action_suffix": " \u2014 \u9009\u62e9\u52a8\u4f5c",
+        "mouse.configure_scroll_actions": "\u4e3a\u5411\u5de6\u548c\u5411\u53f3\u6eda\u52a8\u5206\u522b\u914d\u7f6e\u52a8\u4f5c",
+        "mouse.configure_gesture": "\u914d\u7f6e\u624b\u52bf\u6309\u9215\u7684\u70b9\u51fb\u884c\u4e3a\u548c\u6ed1\u52a8\u52a8\u4f5c",
+        "mouse.select_button_action": "\u9009\u62e9\u4f7f\u7528\u6b64\u6309\u952e\u65f6\u89e6\u53d1\u7684\u52a8\u4f5c",
+        "mouse.scroll_left": "\u5411\u5de6\u6eda\u52a8",
+        "mouse.scroll_right": "\u5411\u53f3\u6eda\u52a8",
+        "mouse.tap_action": "\u70b9\u51fb\u52a8\u4f5c",
+        "mouse.swipe_actions": "\u6ed1\u52a8\u52a8\u4f5c",
+        "mouse.swipe_left": "\u5411\u5de6\u6ed1\u52a8",
+        "mouse.swipe_right": "\u5411\u53f3\u6ed1\u52a8",
+        "mouse.swipe_up": "\u5411\u4e0a\u6ed1\u52a8",
+        "mouse.swipe_down": "\u5411\u4e0b\u6ed1\u52a8",
+        "mouse.threshold": "\u9608\u5024",
+        "mouse.haptic_feedback": "\u9707\u52a8\u53cd\u9988",
+
+        "mouse.debug_events": "\u8c03\u8bd5\u4e8b\u4ef6",
+        "mouse.debug_events_desc": "\u6536\u96c6\u68c0\u6d4b\u5230\u7684\u6309\u952e\u3001\u624b\u52bf\u548c\u6620\u5c04\u52a8\u4f5c",
+        "mouse.clear": "\u6e05\u9664",
+        "mouse.clear_rec": "\u6e05\u9664\u5f55\u5236",
+        "mouse.on": "\u5f00",
+        "mouse.off": "\u5173",
+        "mouse.rec": "\u5f55\u5236\u4e2d",
+        "mouse.record": "\u5f55\u5236",
+        "mouse.live_gesture_monitor": "\u5b9e\u65f6\u624b\u52bf\u76d1\u89c6\u5668",
+        "mouse.held": "\u6309\u4f4f",
+        "mouse.idle": "\u7a7a\u95f2",
+        "mouse.move_seen": "\u68c0\u6d4b\u5230\u79fb\u52a8",
+        "mouse.no_move": "\u65e0\u79fb\u52a8",
+        "mouse.debug_placeholder": "\u5f00\u542f\u8c03\u8bd5\u6a21\u5f0f\uff0c\u7136\u540e\u6309\u4e0b\u6309\u952e\u6216\u4f7f\u7528\u624b\u52bf\u6309\u9215\u3002",
+        "mouse.gesture_placeholder": "\u5f00\u542f\u5f55\u5236\u5e76\u8fdb\u884c\u51e0\u6b21\u624b\u52bf\u5c1d\u8bd5\u3002",
+
+        "mouse.add_app_dialog.title": "\u6dfb\u52a0\u5e94\u7528\u914d\u7f6e",
+        "mouse.add_app_dialog.desc": "\u9009\u62e9\u4e00\u4e2a\u5e94\u7528\u3002\u5f53\u8be5\u5e94\u7528\u5904\u4e8e\u7126\u70b9\u65f6\uff0cMouser \u5c06\u5207\u6362\u5230\u6b64\u914d\u7f6e\u3002",
+        "mouse.search_placeholder": "\u6309\u540d\u79f0\u641c\u7d22\u5e94\u7528",
+        "mouse.browse": "\u6d4f\u89c8",
+        "mouse.search_results": "\u641c\u7d22\u7ed3\u679c",
+        "mouse.suggested_apps": "\u63a8\u8350\u5e94\u7528",
+        "mouse.no_matched": "\u672a\u627e\u5230\u5339\u914d\u7684\u5e94\u7528\u3002",
+        "mouse.no_suggested": "\u6682\u65e0\u63a8\u8350\u5e94\u7528\u3002",
+        "mouse.try_different": "\u8bf7\u5c1d\u8bd5\u5176\u4ed6\u540d\u79f0\uff0c\u6216\u4f7f\u7528\u201c\u6d4f\u89c8\u201d\u76f4\u63a5\u9009\u62e9\u5e94\u7528\u3002",
+        "mouse.use_search": "\u8bf7\u4f7f\u7528\u4e0a\u65b9\u7684\u641c\u7d22\u6846\uff0c\u6216\u6d4f\u89c8\u4ee5\u76f4\u63a5\u9009\u62e9\u5e94\u7528\u3002",
+        "mouse.create_profile": "\u521b\u5efa\u914d\u7f6e",
+        "mouse.cancel": "\u53d6\u6d88",
+
+        "mouse.delete_dialog.title": "\u5220\u9664\u914d\u7f6e\uff1f",
+        "mouse.delete_dialog.confirm_prefix": "\u5220\u9664 ",
+        "mouse.delete_dialog.confirm_suffix": " \u7684\u914d\u7f6e\uff1f",
+        "mouse.delete_dialog.desc": "\u8fd9\u5c06\u5220\u9664\u5176\u81ea\u5b9a\u4e49\u6309\u952e\u6620\u5c04\u3002\u9ed8\u8ba4\u914d\u7f6e\u5c06\u4fdd\u7559\u3002",
+
+        "scroll.title": "\u901a\u7528\u8bbe\u7f6e",
+        "scroll.subtitle": "\u8c03\u6574\u5e94\u7528\u504f\u597d\u3001\u6307\u9488\u901f\u5ea6\u3001\u622a\u56fe\u548c\u6eda\u52a8\u884c\u4e3a",
+        "scroll.pointer_speed": "\u6307\u9488\u901f\u5ea6 (DPI)",
+        "scroll.pointer_speed_desc": "\u8c03\u6574\u4f20\u611f\u5668\u7684\u8ddf\u8e2a\u901f\u5ea6\u3002\u5024\u8d8a\u9ad8\uff0c\u6307\u9488\u79fb\u52a8\u8d8a\u5feb\u3002",
+        "scroll.pointer_speed_desc_range_prefix": "\u8c03\u6574\u4f20\u611f\u5668\u7684\u8ddf\u8e2a\u901f\u5ea6\u3002\u6b64\u8bbe\u5907\u652f\u6301 ",
+        "scroll.pointer_speed_desc_range_to": " \u81f3 ",
+        "scroll.pointer_speed_desc_range_suffix": " DPI\u3002",
+        "scroll.presets": "\u9884\u8bbe\uff1a",
+        "scroll.wheel_mode": "\u6eda\u8f6e\u6a21\u5f0f",
+        "scroll.wheel_mode_desc": "\u5728\u89e6\u89c9\u68d8\u8f6e\u6eda\u52a8\u548c\u987a\u6ed1\u98de\u8f6e\u6eda\u52a8\u4e4b\u95f4\u5207\u6362\u3002",
+        "scroll.ratchet": "\u68d8\u8f6e",
+        "scroll.freespin": "\u98de\u8f6e",
+        "scroll.smart_shift": "智能切换",
+        "scroll.smart_shift_desc": "\u6eda\u8f6e\u6eda\u52a8\u8f83\u5feb\u65f6\uff0c\u81ea\u52a8\u4ece\u9010\u884c\u6eda\u52a8\u5207\u6362\u5230\u9ad8\u901f\u98de\u8f6e\u6a21\u5f0f\u3002",
+        "scroll.sensitivity_value": "\u7075\u654f\u5ea6",
+        "scroll.scroll_mode_section": "\u6eda\u8f6e\u6a21\u5f0f",
+        "scroll.scroll_force": "\u6eda\u8f6e\u529b\u5ea6",
+        "scroll.scroll_force_desc": "\u8c03\u6574\u6eda\u8f6e\u68d8\u8f6e\u624b\u611f\u7684\u677e\u7d27\u7a0b\u5ea6\u3002\u503c\u8d8a\u4f4e\uff0c\u6eda\u52a8\u8d8a\u987a\u6ed1\uff1b\u503c\u8d8a\u9ad8\uff0c\u68d8\u611f\u8d8a\u6e05\u6670\u3002",
+        "scroll.scroll_force_value": "\u529b\u5ea6",
+        "scroll.appearance": "\u5916\u89c2",
+        "scroll.appearance_desc": "\u9009\u62e9 Mouser \u662f\u8ddf\u968f\u7cfb\u7edf\u3001\u4fdd\u6301\u6d45\u8272\u8fd8\u662f\u4fdd\u6301\u6df1\u8272\u3002",
+        "scroll.system": "\u7cfb\u7edf",
+        "scroll.light": "\u6d45\u8272",
+        "scroll.dark": "\u6df1\u8272",
+        "scroll.startup": "\u542f\u52a8",
+        "scroll.startup_desc": "\u5728\u53d7\u652f\u6301\u7684\u684c\u9762\u5e73\u53f0\u4e0a\u968f\u767b\u5f55\u542f\u52a8 Mouser\uff0c\u5e76\u9009\u62e9\u542f\u52a8\u65f6\u662f\u5426\u6253\u5f00\u8bbe\u7f6e\u7a97\u53e3\u6216\u4ec5\u4fdd\u6301\u5728\u7cfb\u7edf\u6258\u76d8\u3002",
+        "scroll.start_at_login": "\u5f00\u673a\u81ea\u542f\u52a8",
+        "scroll.start_minimized": "\u542f\u52a8\u65f6\u6700\u5c0f\u5316",
+        "scroll.screenshots": "\u622a\u56fe",
+        "scroll.screenshots_desc": "\u9009\u62e9 Mouser \u4fdd\u5b58\u622a\u56fe\u6587\u4ef6\u52a8\u4f5c\u7684\u4f4d\u7f6e\u3002\u526a\u8d34\u677f\u52a8\u4f5c\u4e0d\u53d7\u5f71\u54cd\u3002",
+        "scroll.screenshots_save_to": "\u4fdd\u5b58\u5230",
+        "scroll.screenshots_choose": "\u9009\u62e9...",
+        "scroll.screenshots_default": "\u4f7f\u7528\u9ed8\u8ba4",
+        "scroll.screenshots_system_default": "\u7cfb\u7edf\u9ed8\u8ba4\u4f4d\u7f6e",
+        "scroll.check_for_updates": "\u68c0\u67e5\u66f4\u65b0",
+        "scroll.check_for_updates_desc": "\u6709\u65b0\u7248 Mouser \u53ef\u7528\u65f6\u901a\u77e5\u3002\u4e0b\u8f7d\u548c\u5b89\u88c5\u4ecd\u9700\u624b\u52a8\u5b8c\u6210\u3002",
+        "scroll.update_idle": "Mouser \u53ef\u4ee5\u68c0\u67e5\u65b0\u7248\u672c\u3002",
+        "scroll.update_available": "Mouser %1 \u53ef\u7528\u3002",
+        "scroll.update_checking": "\u6b63\u5728\u68c0\u67e5\u66f4\u65b0...",
+        "scroll.update_downloading": "\u6b63\u5728\u4e0b\u8f7d\u66f4\u65b0...",
+        "scroll.update_verifying": "\u6b63\u5728\u9a8c\u8bc1\u66f4\u65b0...",
+        "scroll.update_ready": "Mouser \u9000\u51fa\u540e\u5373\u53ef\u5b89\u88c5\u3002",
+        "scroll.update_installing": "\u6b63\u5728\u5b89\u88c5\u66f4\u65b0...",
+        "scroll.update_installed": "\u66f4\u65b0\u5df2\u5b89\u88c5\u3002",
+        "scroll.update_installed_version": "\u5df2\u66f4\u65b0\u5230 %1\u3002",
+        "scroll.update_cancelled": "\u66f4\u65b0\u5df2\u53d6\u6d88\u3002",
+        "scroll.update_manual": "\u6709\u65b0\u7248 Mouser \u53ef\u7528\u3002\u8bf7\u4ece\u53d1\u5e03\u9875\u4e0b\u8f7d\u5e76\u624b\u52a8\u5b89\u88c5\u3002",
+        "scroll.update_manual_windows": "\u6709\u65b0\u7248 Mouser \u53ef\u7528\u3002\u8bf7\u4ece\u53d1\u5e03\u9875\u4e0b\u8f7d\u5e76\u5728 Windows \u4e0a\u624b\u52a8\u5b89\u88c5\u3002",
+        "scroll.update_manual_macos": "\u6709\u65b0\u7248 Mouser \u53ef\u7528\u3002\u8bf7\u4ece\u53d1\u5e03\u9875\u4e0b\u8f7d\u5e76\u5728 macOS \u4e0a\u624b\u52a8\u5b89\u88c5\u3002",
+        "scroll.update_manual_linux": "\u6709\u65b0\u7248 Mouser \u53ef\u7528\u3002\u8bf7\u4ece\u53d1\u5e03\u9875\u4e0b\u8f7d\u5e76\u5728 Linux \u4e0a\u624b\u52a8\u5b89\u88c5\u3002",
+        "scroll.update_no_asset": "\u6b64\u7535\u8111\u6ca1\u6709\u53ef\u7528\u7684\u66f4\u65b0\u5305\u3002",
+        "scroll.update_error": "\u65e0\u6cd5\u51c6\u5907\u66f4\u65b0\u3002",
+        "scroll.update_error_check_first": "\u8bf7\u5148\u68c0\u67e5\u66f4\u65b0\u3002",
+        "scroll.update_error_network_error": "Mouser \u65e0\u6cd5\u8fde\u63a5\u66f4\u65b0\u670d\u52a1\u3002\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002",
+        "scroll.update_error_metadata_missing": "\u66f4\u65b0\u4fe1\u606f\u5c1a\u672a\u51c6\u5907\u597d\u3002\u8bf7\u6253\u5f00\u53d1\u5e03\u9875\u624b\u52a8\u5b89\u88c5\u3002",
+        "scroll.update_error_metadata_invalid": "\u65e0\u6cd5\u8bfb\u53d6\u66f4\u65b0\u4fe1\u606f\u3002\u8bf7\u6253\u5f00\u53d1\u5e03\u9875\u624b\u52a8\u5b89\u88c5\u3002",
+        "scroll.update_error_permission_denied": "Mouser \u6ca1\u6709\u51c6\u5907\u66f4\u65b0\u7684\u6743\u9650\u3002",
+        "scroll.update_error_file_error": "Mouser \u65e0\u6cd5\u5199\u5165\u66f4\u65b0\u6587\u4ef6\u3002",
+        "scroll.update_error_install_failed": "\u66f4\u65b0\u672a\u5b8c\u6210\u3002\u8bf7\u6253\u5f00\u53d1\u5e03\u9875\u624b\u52a8\u5b89\u88c5\u3002",
+        "scroll.update_error_sha256_mismatch": "\u4e0b\u8f7d\u672a\u901a\u8fc7\u9a8c\u8bc1\u3002\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002",
+        "scroll.update_error_size_mismatch": "\u4e0b\u8f7d\u672a\u901a\u8fc7\u9a8c\u8bc1\u3002\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002",
+        "scroll.update_error_expired_metadata": "\u66f4\u65b0\u4fe1\u606f\u5df2\u8fc7\u671f\u3002\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002",
+        "scroll.update_error_older_build": "Mouser \u5df2\u62d2\u7edd\u8f83\u65e7\u7684\u66f4\u65b0\u3002",
+        "scroll.update_check": "\u68c0\u67e5",
+        "scroll.update_download": "\u4e0b\u8f7d",
+        "scroll.update_verify": "\u9a8c\u8bc1",
+        "scroll.update_install": "\u5b89\u88c5",
+        "scroll.update_cancel": "\u53d6\u6d88",
+        "scroll.update_open_release": "\u6253\u5f00\u53d1\u5e03\u9875",
+        "scroll.scroll_speed": "\u6eda\u8f6e\u901f\u5ea6",
+        "scroll.scroll_speed_desc": "\u8c03\u6574\u6bcf\u6b21\u6eda\u8f6e\u6eda\u52a8\u7684\u9875\u9762\u79fb\u52a8\u901f\u5ea6\u30021.0\u00d7 \u4e3a\u7cfb\u7edf\u9ed8\u8ba4\u3002",
+        "scroll.scroll_speed_presets": "\u9884\u8bbe\uff1a",
+        "scroll.smooth_scroll": "\u5e73\u6ed1\u6eda\u52a8",
+        "scroll.smooth_scroll_desc": "\u6eda\u8f6e\u6eda\u52a8\u540e\u6dfb\u52a0\u60ef\u6027\u6ed1\u884c\u6548\u679c\uff0c\u8ba9\u6eda\u52a8\u4f53\u9a8c\u66f4\u987a\u6ed1\u3002",
+        "scroll.scroll_direction": "\u6eda\u52a8\u65b9\u5411",
+        "scroll.scroll_direction_desc": "\u53cd\u8f6c\u6eda\u52a8\u65b9\u5411\uff08\u81ea\u7136\u6eda\u52a8\uff09",
+        "scroll.invert_vertical": "\u53cd\u8f6c\u5782\u76f4\u6eda\u52a8",
+        "scroll.invert_horizontal": "\u53cd\u8f6c\u6c34\u5e73\u6eda\u52a8",
+        "scroll.ignore_trackpad": "\u5ffd\u7565\u89e6\u6478\u677f",
+        "scroll.ignore_trackpad_desc": "\u4ec5\u54cd\u5e94\u9f20\u6807\u4e8b\u4ef6\uff0c\u4e0d\u54cd\u5e94\u89e6\u6478\u677f\u6216 Magic Mouse",
+        "scroll.dpi_note": "DPI \u66f4\u6539\u9700\u8981\u901a\u8fc7 HID++ \u4e0e\u8bbe\u5907\u901a\u4fe1\uff0c\u5c06\u5728\u77ed\u6682\u5ef6\u8fdf\u540e\u751f\u6548\u3002",
+        "scroll.language": "\u8bed\u8a00",
+        "scroll.language_desc": "\u9009\u62e9\u5e94\u7528\u7a0b\u5e8f\u7684\u663e\u793a\u8bed\u8a00\u3002",
+
+        "key_capture.title": "\u81ea\u5b9a\u4e49\u5feb\u6377\u952e",
+        "key_capture.placeholder": "\u4f8b\u5982\uff1asuper+shift+f5",
+        "key_capture.placeholder_recording": "\u8bf7\u6309\u4e0b\u5feb\u6377\u952e\u2026",
+        "key_capture.record_hint": "\u8bf7\u76f4\u63a5\u6309\u4e0b\u6240\u9700\u6309\u952e\u3002Win \u7b49\u4fee\u9970\u952e\u4f1a\u5728\u6b64\u5904\u88ab\u6355\u83b7\uff0c\u4e0d\u4f1a\u4f20\u9012\u7ed9\u7cfb\u7edf\u3002",
+        "key_capture.type_hint": "\u4f7f\u7528 + \u8fde\u63a5\u5404\u4e2a\u6309\u952e\u8f93\u5165\uff0c\u4f8b\u5982\uff1asuper+shift+f5\u3002",
+        "key_capture.mode_type": "\u6539\u4e3a\u8f93\u5165",
+        "key_capture.mode_record": "\u5f55\u5236\u6309\u952e",
+        "key_capture.valid_keys": "\u6709\u6548\u6309\u952e\uff1actrl/control\u3001shift\u3001alt/option/opt\u3001super\uff08\u522b\u540d\uff1acmd\u3001command\u3001meta\u3001win\u3001windows\uff09\u30010\u20139\u3001a\u2013z\u3001f1\u2013f24\u3001\nspace\u3001tab\u3001enter\u3001esc\u3001left\u3001right\u3001up\u3001down\u3001delete\u2026\u2026",
+        "key_capture.reserved_warning": "\u64cd\u4f5c\u7cfb\u7edf\u53ef\u80fd\u4f1a\u622a\u83b7\u8fd9\u4e2a\u5feb\u6377\u952e\u3002\u4ecd\u53ef\u4ee5\u4fdd\u5b58\uff0c\u4f46\u5177\u4f53\u884c\u4e3a\u53ef\u80fd\u56e0\u7cfb\u7edf\u800c\u5f02\u3002",
+        "key_capture.error.unsupported_key": "\u8bf7\u9009\u62e9\u5176\u4ed6\u6309\u952e\u3002%1 \u5728 Mouser \u4e2d\u4e0d\u53ef\u7528\u3002",
+        "key_capture.error.unknown_key": "\u65e0\u6cd5\u8bc6\u522b\uff1a%1\u3002",
+        "key_capture.error.duplicate_key": "\u8bf7\u79fb\u9664\u91cd\u590d\u6309\u952e\u3002",
+        "key_capture.error.multiple_main_keys": "\u53ea\u80fd\u4f7f\u7528\u4e00\u4e2a\u4e3b\u6309\u952e\uff0c\u53ef\u642d\u914d Ctrl\u3001Shift\u3001Alt \u6216 Super\u3002",
+        "key_capture.error.missing_main_key": "\u8bf7\u6dfb\u52a0\u4e00\u4e2a\u6309\u952e\uff0c\u4f8b\u5982 A\u3001F5 \u6216 Page Down\u3002",
+        "key_capture.error.empty_segment": "+ \u53ea\u7528\u4e8e\u5206\u9694\u6309\u952e\uff1b\u5982\u9700\u8f93\u5165\u52a0\u53f7\uff0c\u8bf7\u8f93\u5165 plus\u3002",
+        "key_capture.error.unsupported": "\u65e0\u6cd5\u4f7f\u7528\u8fd9\u4e2a\u5feb\u6377\u952e\u3002",
+        "key_capture.cancel": "\u53d6\u6d88",
+        "key_capture.confirm": "\u786e\u8ba4",
+
+        "tray.open_settings": "\u6253\u5f00\u8bbe\u7f6e",
+        "tray.disable_remapping": "\u7981\u7528\u6309\u952e\u91cd\u6620\u5c04",
+        "tray.enable_remapping": "\u542f\u7528\u6309\u952e\u91cd\u6620\u5c04",
+        "tray.enable_debug": "\u542f\u7528\u8c03\u8bd5\u6a21\u5f0f",
+        "tray.disable_debug": "\u7981\u7528\u8c03\u8bd5\u6a21\u5f0f",
+        "tray.check_for_updates": "\u68c0\u67e5\u66f4\u65b0...",
+        "tray.open_latest_release": "\u6253\u5f00\u6700\u65b0\u7248\u672c\u9875\u9762",
+        "tray.update_available": "Mouser {version} \u53ef\u7528\u3002\u8bf7\u6253\u5f00\u53d1\u5e03\u9875\u9762\u624b\u52a8\u4e0b\u8f7d\u3002",
+        "tray.quit": "\u9000\u51fa Mouser",
+        "tray.tray_message": "Mouser \u6b63\u5728\u7cfb\u7edf\u6258\u76d8\u4e2d\u8fd0\u884c\u3002\u70b9\u51fb\u56fe\u6807\u6253\u5f00\u8bbe\u7f6e\u3002",
+
+        "accessibility.title": "\u9700\u8981\u8f85\u52a9\u529f\u80fd\u6743\u9650",
+        "accessibility.text": (
+            "Mouser \u9700\u8981\u8f85\u52a9\u529f\u80fd\u6743\u9650\u4ee5\u62e6\u622a\u9f20\u6807\u6309\u952e\u4e8b\u4ef6\u3002\n\n"
+            "macOS \u5e94\u5df2\u6253\u5f00\u7cfb\u7edf\u8bbe\u7f6e\u63d0\u793a\u3002\n"
+            "\u8bf7\u6388\u4e88\u6743\u9650\uff0c\u7136\u540e\u91cd\u65b0\u542f\u52a8 Mouser\u3002"
+        ),
+        "accessibility.info": "\u7cfb\u7edf\u8bbe\u7f6e -> \u9690\u79c1\u4e0e\u5b89\u5168\u6027 -> \u8f85\u52a9\u529f\u80fd",
+
+        "dialog.close": "\u5173\u95ed",
+
+        "about.title": "\u5173\u4e8e Mouser",
+        "about.subtitle": "\u7528\u4e8e\u652f\u6301\u548c\u8c03\u8bd5\u7684\u8fd0\u884c\u65f6\u4e0e\u6784\u5efa\u4fe1\u606f\u3002",
+        "about.version": "\u7248\u672c",
+        "about.build_mode": "\u6784\u5efa\u6a21\u5f0f",
+        "about.commit": "\u63d0\u4ea4",
+        "about.launch_path": "\u542f\u52a8\u8def\u5f84",
+        "about.close": "\u5173\u95ed",
+
+        "lang.en": "English",
+        "lang.zh_CN": "\u7b80\u4f53\u4e2d\u6587",
+        "lang.zh_TW": "\u7e41\u9ad4\u4e2d\u6587",
+    },
+
+    # ── Traditional Chinese ───────────────────────────────────────
+    "zh_TW": {
+        "nav.mouse_profiles": "\u6ed1\u9f20\u8207\u8a2d\u5b9a\u6a94",
+        "nav.point_scroll": "\u901a\u7528",
+        "nav.haptic_feedback": "\u89f8\u89ba\u56de\u994b",
+
+        "haptic.title": "\u89f8\u89ba\u56de\u994b",
+        "haptic.subtitle": "\u8a2d\u5b9a MX Master 4 \u7684\u89f8\u89ba\u99ac\u9054",
+        "haptic.level": "\u56de\u994b\u5f37\u5ea6",
+        "haptic.level_desc": "\u9078\u64c7\u89f8\u89ba\u99ac\u9054\u7684\u97ff\u61c9\u5f37\u5ea6\u3002\u8f03\u9ad8\u7d1a\u5225\u6703\u6d88\u8017\u66f4\u591a\u96fb\u91cf\u3002",
+        "haptic.level_subtle": "\u5fae\u5f31",
+        "haptic.level_low": "\u4f4e",
+        "haptic.level_medium": "\u4e2d",
+        "haptic.level_high": "\u9ad8",
+        "haptic.test_title": "\u6e2c\u8a66\u89f8\u89ba",
+        "haptic.test_desc": "\u64ad\u653e\u4e00\u6b21\u77ed\u66ab\u7684\u89f8\u89ba\u8108\u885d\u4ee5\u9810\u89bd\u76ee\u524d\u5f37\u5ea6\u3002",
+        "haptic.test": "\u6e2c\u8a66",
+        "haptic.actions_title": "\u52d5\u4f5c\u89f8\u89ba\u56de\u994b",
+        "haptic.actions_desc": "\u9078\u64c7\u54ea\u4e9b\u52d5\u4f5c\u89f8\u767c\u89f8\u89ba\u56de\u994b\u3002\u9ede\u64ca\u52d5\u4f5c\u53ef\u5728\u300c\u5df2\u555f\u7528\u300d\u548c\u300c\u53ef\u9078\u300d\u4e4b\u9593\u79fb\u52d5\u3002",
+        "haptic.actions_enabled": "\u5df2\u555f\u7528",
+        "haptic.actions_available": "\u53ef\u9078",
+        "haptic.actions_empty": "\u672a\u9078\u64c7\u4efb\u4f55\u52d5\u4f5c\u3002\u8acb\u5f9e\u300c\u53ef\u9078\u300d\u4e2d\u52a0\u5165\u3002",
+        "haptic.buttons_title": "\u6309\u9375\u89f8\u89ba\u56de\u994b",
+        "haptic.buttons_desc": "\u9078\u64c7\u54ea\u4e9b\u6309\u9375\u89f8\u767c\u89f8\u89ba\u56de\u994b\uff0c\u8207\u4e0a\u65b9\u52d5\u4f5c\u9078\u64c7\u758a\u52a0\u751f\u6548\u3002",
+        "haptic.buttons_enabled": "\u5df2\u555f\u7528",
+        "haptic.buttons_available": "\u53ef\u9078",
+        "haptic.buttons_empty": "\u672a\u9078\u64c7\u4efb\u4f55\u6309\u9375\u3002\u8acb\u5f9e\u300c\u53ef\u9078\u300d\u4e2d\u52a0\u5165\u3002",
+        "haptic.dedup_title": "\u9632\u6b62\u91cd\u8907\u89f8\u89ba",
+        "haptic.dedup_desc": "\u7576\u5169\u500b\u89f8\u89ba\u4e8b\u4ef6\u77ed\u6642\u9593\u5167\u540c\u6642\u89f8\u767c\u6642\uff0c\u50c5\u64ad\u653e\u4e00\u6b21\u3002\u505c\u7528\u5247\u5141\u8a31\u5169\u6b21\u90fd\u89f8\u767c\u3002",
+        "haptic.experimental_note": "\u89f8\u89ba\u56de\u994b\u652f\u63f4\u70ba\u5be6\u9a57\u6027\u529f\u80fd\u3002\u90e8\u5206\u8a2d\u5b9a\u53ef\u80fd\u5728\u5354\u5b9a\u5b8c\u5168\u6587\u4ef6\u5316\u5f8c\u624d\u751f\u6548\u3002",
+
+        # Actions Ring page
+        "ring.title": "\u52d5\u4f5c\u74b0",
+        "ring.subtitle": "\u8a2d\u5b9a\u5f91\u5411\u9078\u55ae\u7684\u6309\u4f4f\u5ef6\u9072\u548c\u6247\u5340\u52d5\u4f5c",
+        "ring.hold_delay": "\u6309\u4f4f\u5ef6\u9072",
+        "ring.hold_delay_desc": "\u6309\u4f4f\u62c7\u6307\u6309\u9375\u591a\u9577\u6642\u9593\u5f8c\u986f\u793a\u52d5\u4f5c\u74b0",
+        "ring.slots_title": "\u74b0\u5f62\u52d5\u4f5c",
+        "ring.slots_desc": "\u9078\u64c7\u5f91\u5411\u9078\u55ae\u6bcf\u500b\u6247\u5340\u4e2d\u53ef\u7528\u7684\u52d5\u4f5c",
+        "ring.slot_prefix": "\u4f4d\u7f6e ",
+
+        "nav.actions_ring": "\u52d5\u4f5c\u74b0",
+        "nav.about": "\u95dc\u65bc",
+
+        "mouse.profiles": "\u8a2d\u5b9a\u6a94",
+        "mouse.all_applications": "\u6240\u6709\u61c9\u7528\u7a0b\u5f0f",
+        "mouse.add_app_profile": "\u65b0\u589e\u61c9\u7528\u7a0b\u5f0f\u8a2d\u5b9a\u6a94",
+        "mouse.search_installed_apps": "\u641c\u5c0b\u5df2\u5b89\u88dd\u7684\u61c9\u7528\u7a0b\u5f0f\u6216\u624b\u52d5\u700f\u89bd",
+        "mouse.delete_profile": "\u522a\u9664\u8a2d\u5b9a\u6a94",
+
+        "mouse.connected": "\u5df2\u9023\u7dda",
+        "mouse.not_connected": "\u672a\u9023\u7dda",
+        "mouse.waiting_for_connection": "\u7b49\u5f85\u9023\u7dda",
+        "mouse.connect_mouse": "\u9023\u63a5\u60a8\u7684\u7f85\u6280\u6ed1\u9f20",
+        "mouse.connect_mouse_desc": "Mouser \u5c07\u5075\u6e2c\u6d3b\u52d5\u88dd\u7f6e\uff0c\u89e3\u9396\u6309\u9375\u5c0d\u6620\uff0c\u4e26\u5728\u6ed1\u9f20\u53ef\u7528\u5f8c\u555f\u7528\u6b63\u78ba\u7684\u7248\u9762\u914d\u7f6e\u6a21\u5f0f\u3002",
+        "mouse.layout_appears_auto": "\u7248\u9762\u914d\u7f6e\u6a21\u5f0f\u81ea\u52d5\u986f\u793a",
+        "mouse.per_device_settings": "\u6bcf\u500b\u88dd\u7f6e\u7684\u8a2d\u5b9a\u5206\u958b\u5132\u5b58",
+
+        "mouse.turn_on_mouse": "\u958b\u555f\u60a8\u7684\u7f85\u6280\u6ed1\u9f20\u4ee5\u958b\u59cb\u81ea\u8a02\u6309\u9375",
+        "mouse.click_dot": "\u9ede\u64ca\u5713\u9ede\u4ee5\u8a2d\u5b9a\u5176\u52d5\u4f5c",
+        "mouse.choose_layout": "\u5728\u6211\u5011\u5efa\u7acb\u5c08\u5c6c\u8986\u84cb\u5c64\u7684\u540c\u6642\uff0c\u8acb\u5728\u4e0b\u65b9\u9078\u64c7\u7248\u9762\u914d\u7f6e\u6a21\u5f0f",
+
+        "mouse.layout_mode": "\u7248\u9762\u914d\u7f6e\u6a21\u5f0f",
+        "mouse.experimental_override_prefix": "\u5be6\u9a57\u6027\u8986\u84cb\u5df2\u555f\u7528\uff1a",
+        "mouse.experimental_override_suffix": "\u3002\u5982\u679c\u71b1\u9ede\u5716\u4e0d\u5c0d\u9f4a\uff0c\u8acb\u5207\u63db\u56de\u81ea\u52d5\u5075\u6e2c\u3002",
+        "mouse.interactive_layout_coming": "\u4e92\u52d5\u5f0f\u7248\u9762\u914d\u7f6e\u5373\u5c07\u63a8\u51fa",
+        "mouse.auto_detect": "\u81ea\u52d5\u5075\u6e2c",
+
+        "mouse.do_nothing": "\u7121\u52d5\u4f5c",
+        "mouse.horizontal_scroll": "\u6c34\u5e73\u6372\u52d5",
+        "mouse.tap": "\u9ede\u64ca\uff1a",
+        "mouse.swipes_configured": "\u5df2\u8a2d\u5b9a\u6ed1\u52d5",
+        "mouse.installed_app": "\u5df2\u5b89\u88dd\u7684\u61c9\u7528\u7a0b\u5f0f",
+        "mouse.applications": "\u61c9\u7528\u7a0b\u5f0f",
+        "mouse.system_applications": "\u7cfb\u7d71\u61c9\u7528\u7a0b\u5f0f",
+        "mouse.macos_coreservices": "macOS \u6838\u5fc3\u670d\u52d9",
+
+        "mouse.choose_action_suffix": " \u2014 \u9078\u64c7\u52d5\u4f5c",
+        "mouse.configure_scroll_actions": "\u5206\u5225\u8a2d\u5b9a\u5411\u5de6\u548c\u5411\u53f3\u6372\u52d5\u7684\u52d5\u4f5c",
+        "mouse.configure_gesture": "\u8a2d\u5b9a\u624b\u52e2\u6309\u9215\u7684\u9ede\u64ca\u884c\u70ba\u548c\u6ed1\u52d5\u52d5\u4f5c",
+        "mouse.select_button_action": "\u9078\u64c7\u4f7f\u7528\u6b64\u6309\u9375\u6642\u89f8\u767c\u7684\u52d5\u4f5c",
+        "mouse.scroll_left": "\u5411\u5de6\u6372\u52d5",
+        "mouse.scroll_right": "\u5411\u53f3\u6372\u52d5",
+        "mouse.tap_action": "\u9ede\u64ca\u52d5\u4f5c",
+        "mouse.swipe_actions": "\u6ed1\u52d5\u52d5\u4f5c",
+        "mouse.swipe_left": "\u5411\u5de6\u6ed1\u52d5",
+        "mouse.swipe_right": "\u5411\u53f3\u6ed1\u52d5",
+        "mouse.swipe_up": "\u5411\u4e0a\u6ed1\u52d5",
+        "mouse.swipe_down": "\u5411\u4e0b\u6ed1\u52d5",
+        "mouse.threshold": "\u95be\u5024",
+        "mouse.haptic_feedback": "\u9707\u52d5\u56de\u9994",
+
+        "mouse.debug_events": "\u9664\u932f\u4e8b\u4ef6",
+        "mouse.debug_events_desc": "\u6536\u96c6\u5075\u6e2c\u5230\u7684\u6309\u9375\u3001\u624b\u52e2\u548c\u5c0d\u6620\u52d5\u4f5c",
+        "mouse.clear": "\u6e05\u9664",
+        "mouse.clear_rec": "\u6e05\u9664\u9304\u88fd",
+        "mouse.on": "\u958b",
+        "mouse.off": "\u95dc",
+        "mouse.rec": "\u9304\u88fd\u4e2d",
+        "mouse.record": "\u9304\u88fd",
+        "mouse.live_gesture_monitor": "\u5373\u6642\u624b\u52e2\u76e3\u8996\u5668",
+        "mouse.held": "\u6309\u4f4f",
+        "mouse.idle": "\u9592\u7f6e",
+        "mouse.move_seen": "\u5075\u6e2c\u5230\u79fb\u52d5",
+        "mouse.no_move": "\u7121\u79fb\u52d5",
+        "mouse.debug_placeholder": "\u958b\u555f\u9664\u932f\u6a21\u5f0f\uff0c\u7136\u5f8c\u6309\u4e0b\u6309\u9375\u6216\u4f7f\u7528\u624b\u52e2\u6309\u9215\u3002",
+        "mouse.gesture_placeholder": "\u958b\u555f\u9304\u88fd\u4e26\u9032\u884c\u5e7e\u6b21\u624b\u52e2\u5617\u8a66\u3002",
+
+        "mouse.add_app_dialog.title": "\u65b0\u589e\u61c9\u7528\u7a0b\u5f0f\u8a2d\u5b9a\u6a94",
+        "mouse.add_app_dialog.desc": "\u9078\u64c7\u4e00\u500b\u61c9\u7528\u7a0b\u5f0f\u3002\u7576\u8a72\u61c9\u7528\u7a0b\u5f0f\u8655\u65bc\u7126\u9ede\u6642\uff0cMouser \u5c07\u5207\u63db\u5230\u6b64\u8a2d\u5b9a\u6a94\u3002",
+        "mouse.search_placeholder": "\u6309\u540d\u7a31\u641c\u5c0b\u61c9\u7528\u7a0b\u5f0f",
+        "mouse.browse": "\u700f\u89bd",
+        "mouse.search_results": "\u641c\u5c0b\u7d50\u679c",
+        "mouse.suggested_apps": "\u5efa\u8b70\u7684\u61c9\u7528\u7a0b\u5f0f",
+        "mouse.no_matched": "\u672a\u627e\u5230\u7b26\u5408\u7684\u61c9\u7528\u7a0b\u5f0f\u3002",
+        "mouse.no_suggested": "\u66ab\u7121\u5efa\u8b70\u7684\u61c9\u7528\u7a0b\u5f0f\u3002",
+        "mouse.try_different": "\u8acb\u5617\u8a66\u5176\u4ed6\u540d\u7a31\uff0c\u6216\u4f7f\u7528\u300c\u700f\u89bd\u300d\u76f4\u63a5\u9078\u64c7\u61c9\u7528\u7a0b\u5f0f\u3002",
+        "mouse.use_search": "\u8acb\u4f7f\u7528\u4e0a\u65b9\u7684\u641c\u5c0b\u6846\uff0c\u6216\u700f\u89bd\u4ee5\u76f4\u63a5\u9078\u64c7\u61c9\u7528\u7a0b\u5f0f\u3002",
+        "mouse.create_profile": "\u5efa\u7acb\u8a2d\u5b9a\u6a94",
+        "mouse.cancel": "\u53d6\u6d88",
+
+        "mouse.delete_dialog.title": "\u522a\u9664\u8a2d\u5b9a\u6a94\uff1f",
+        "mouse.delete_dialog.confirm_prefix": "\u522a\u9664 ",
+        "mouse.delete_dialog.confirm_suffix": " \u7684\u8a2d\u5b9a\u6a94\uff1f",
+        "mouse.delete_dialog.desc": "\u9019\u5c07\u522a\u9664\u5176\u81ea\u8a02\u6309\u9375\u5c0d\u6620\u3002\u9810\u8a2d\u8a2d\u5b9a\u6a94\u5c07\u4fdd\u7559\u3002",
+
+        "scroll.title": "\u901a\u7528\u8a2d\u5b9a",
+        "scroll.subtitle": "\u8abf\u6574\u61c9\u7528\u504f\u597d\u3001\u6307\u6a19\u901f\u5ea6\u3001\u622a\u5716\u548c\u6372\u52d5\u884c\u70ba",
+        "scroll.pointer_speed": "\u6307\u6a19\u901f\u5ea6 (DPI)",
+        "scroll.pointer_speed_desc": "\u8abf\u6574\u611f\u6e2c\u5668\u7684\u8ffd\u8e64\u901f\u5ea6\u3002\u5024\u8d8a\u9ad8\uff0c\u6307\u6a19\u79fb\u52d5\u8d8a\u5feb\u3002",
+        "scroll.pointer_speed_desc_range_prefix": "\u8abf\u6574\u611f\u6e2c\u5668\u7684\u8ffd\u8e64\u901f\u5ea6\u3002\u6b64\u88dd\u7f6e\u652f\u63f4 ",
+        "scroll.pointer_speed_desc_range_to": " \u81f3 ",
+        "scroll.pointer_speed_desc_range_suffix": " DPI\u3002",
+        "scroll.presets": "\u9810\u8a2d\uff1a",
+        "scroll.wheel_mode": "\u6372\u8ef8\u6a21\u5f0f",
+        "scroll.wheel_mode_desc": "\u5728\u89f8\u89ba\u68d8\u8f2a\u6372\u52d5\u548c\u9806\u6ed1\u98db\u8f2a\u6372\u52d5\u4e4b\u9593\u5207\u63db\u3002",
+        "scroll.ratchet": "\u68d8\u8f2a",
+        "scroll.freespin": "\u98db\u8f2a",
+        "scroll.smart_shift": "智慧切換",
+        "scroll.smart_shift_desc": "\u6372\u8ef8\u6eda\u52d5\u8f03\u5feb\u6642\uff0c\u81ea\u52d5\u5f9e\u9010\u884c\u6372\u52d5\u5207\u63db\u5230\u9ad8\u901f\u98db\u8f2a\u6a21\u5f0f\u3002",
+        "scroll.sensitivity_value": "\u9748\u654f\u5ea6",
+        "scroll.scroll_mode_section": "\u6eda\u8f2a\u6a21\u5f0f",
+        "scroll.scroll_force": "\u6eda\u8f2a\u529b\u9053",
+        "scroll.scroll_force_desc": "\u8abf\u6574\u6efe\u8f2a\u68d8\u8f2a\u624b\u611f\u7684\u9b06\u7dca\u7a0b\u5ea6\u3002\u503c\u8d8a\u4f4e\uff0c\u6efe\u52d5\u8d8a\u9806\u6ed1\uff1b\u503c\u8d8a\u9ad8\uff0c\u68d8\u611f\u8d8a\u6e05\u6670\u3002",
+        "scroll.scroll_force_value": "\u529b\u9053",
+        "scroll.appearance": "\u5916\u89c0",
+        "scroll.appearance_desc": "\u9078\u64c7 Mouser \u662f\u8ddf\u96a8\u7cfb\u7d71\u3001\u4fdd\u6301\u6dfa\u8272\u9084\u662f\u4fdd\u6301\u6df1\u8272\u3002",
+        "scroll.system": "\u7cfb\u7d71",
+        "scroll.light": "\u6dfa\u8272",
+        "scroll.dark": "\u6df1\u8272",
+        "scroll.startup": "\u555f\u52d5",
+        "scroll.startup_desc": "\u5728\u53d7\u652f\u63f4\u7684\u684c\u9762\u5e73\u53f0\u4e0a\u96a8\u767b\u5165\u555f\u52d5 Mouser\uff0c\u4e26\u9078\u64c7\u555f\u52d5\u6642\u662f\u5426\u958b\u555f\u8a2d\u5b9a\u8996\u7a97\u6216\u50c5\u4fdd\u6301\u5728\u7cfb\u7d71\u5217\u3002",
+        "scroll.start_at_login": "\u767b\u5165\u6642\u555f\u52d5",
+        "scroll.start_minimized": "\u555f\u52d5\u6642\u6700\u5c0f\u5316",
+        "scroll.screenshots": "\u622a\u5716",
+        "scroll.screenshots_desc": "\u9078\u64c7 Mouser \u5132\u5b58\u622a\u5716\u6a94\u6848\u52d5\u4f5c\u7684\u4f4d\u7f6e\u3002\u526a\u8cbc\u7c3f\u52d5\u4f5c\u4e0d\u53d7\u5f71\u97ff\u3002",
+        "scroll.screenshots_save_to": "\u5132\u5b58\u5230",
+        "scroll.screenshots_choose": "\u9078\u64c7...",
+        "scroll.screenshots_default": "\u4f7f\u7528\u9810\u8a2d",
+        "scroll.screenshots_system_default": "\u7cfb\u7d71\u9810\u8a2d\u4f4d\u7f6e",
+        "scroll.check_for_updates": "\u6aa2\u67e5\u66f4\u65b0",
+        "scroll.check_for_updates_desc": "\u6709\u65b0\u7248 Mouser \u53ef\u7528\u6642\u901a\u77e5\u3002\u4e0b\u8f09\u548c\u5b89\u88dd\u4ecd\u9700\u624b\u52d5\u5b8c\u6210\u3002",
+        "scroll.update_idle": "Mouser \u53ef\u4ee5\u6aa2\u67e5\u65b0\u7248\u672c\u3002",
+        "scroll.update_available": "Mouser %1 \u53ef\u7528\u3002",
+        "scroll.update_checking": "\u6b63\u5728\u6aa2\u67e5\u66f4\u65b0...",
+        "scroll.update_downloading": "\u6b63\u5728\u4e0b\u8f09\u66f4\u65b0...",
+        "scroll.update_verifying": "\u6b63\u5728\u9a57\u8b49\u66f4\u65b0...",
+        "scroll.update_ready": "Mouser \u9000\u51fa\u5f8c\u5373\u53ef\u5b89\u88dd\u3002",
+        "scroll.update_installing": "\u6b63\u5728\u5b89\u88dd\u66f4\u65b0...",
+        "scroll.update_installed": "\u66f4\u65b0\u5df2\u5b89\u88dd\u3002",
+        "scroll.update_installed_version": "\u5df2\u66f4\u65b0\u5230 %1\u3002",
+        "scroll.update_cancelled": "\u66f4\u65b0\u5df2\u53d6\u6d88\u3002",
+        "scroll.update_manual": "\u6709\u65b0\u7248 Mouser \u53ef\u7528\u3002\u8acb\u5f9e\u767c\u5e03\u9801\u4e0b\u8f09\u4e26\u624b\u52d5\u5b89\u88dd\u3002",
+        "scroll.update_manual_windows": "\u6709\u65b0\u7248 Mouser \u53ef\u7528\u3002\u8acb\u5f9e\u767c\u5e03\u9801\u4e0b\u8f09\u4e26\u5728 Windows \u4e0a\u624b\u52d5\u5b89\u88dd\u3002",
+        "scroll.update_manual_macos": "\u6709\u65b0\u7248 Mouser \u53ef\u7528\u3002\u8acb\u5f9e\u767c\u5e03\u9801\u4e0b\u8f09\u4e26\u5728 macOS \u4e0a\u624b\u52d5\u5b89\u88dd\u3002",
+        "scroll.update_manual_linux": "\u6709\u65b0\u7248 Mouser \u53ef\u7528\u3002\u8acb\u5f9e\u767c\u5e03\u9801\u4e0b\u8f09\u4e26\u5728 Linux \u4e0a\u624b\u52d5\u5b89\u88dd\u3002",
+        "scroll.update_no_asset": "\u6b64\u96fb\u8166\u6c92\u6709\u53ef\u7528\u7684\u66f4\u65b0\u5957\u4ef6\u3002",
+        "scroll.update_error": "\u7121\u6cd5\u6e96\u5099\u66f4\u65b0\u3002",
+        "scroll.update_error_check_first": "\u8acb\u5148\u6aa2\u67e5\u66f4\u65b0\u3002",
+        "scroll.update_error_network_error": "Mouser \u7121\u6cd5\u9023\u63a5\u66f4\u65b0\u670d\u52d9\u3002\u8acb\u7a0d\u5f8c\u91cd\u8a66\u3002",
+        "scroll.update_error_metadata_missing": "\u66f4\u65b0\u8cc7\u8a0a\u5c1a\u672a\u6e96\u5099\u597d\u3002\u8acb\u958b\u555f\u767c\u5e03\u9801\u624b\u52d5\u5b89\u88dd\u3002",
+        "scroll.update_error_metadata_invalid": "\u7121\u6cd5\u8b80\u53d6\u66f4\u65b0\u8cc7\u8a0a\u3002\u8acb\u958b\u555f\u767c\u5e03\u9801\u624b\u52d5\u5b89\u88dd\u3002",
+        "scroll.update_error_permission_denied": "Mouser \u6c92\u6709\u6e96\u5099\u66f4\u65b0\u7684\u6b0a\u9650\u3002",
+        "scroll.update_error_file_error": "Mouser \u7121\u6cd5\u5beb\u5165\u66f4\u65b0\u6a94\u6848\u3002",
+        "scroll.update_error_install_failed": "\u66f4\u65b0\u672a\u5b8c\u6210\u3002\u8acb\u958b\u555f\u767c\u5e03\u9801\u624b\u52d5\u5b89\u88dd\u3002",
+        "scroll.update_error_sha256_mismatch": "\u4e0b\u8f09\u672a\u901a\u904e\u9a57\u8b49\u3002\u8acb\u7a0d\u5f8c\u91cd\u8a66\u3002",
+        "scroll.update_error_size_mismatch": "\u4e0b\u8f09\u672a\u901a\u904e\u9a57\u8b49\u3002\u8acb\u7a0d\u5f8c\u91cd\u8a66\u3002",
+        "scroll.update_error_expired_metadata": "\u66f4\u65b0\u8cc7\u8a0a\u5df2\u904e\u671f\u3002\u8acb\u7a0d\u5f8c\u91cd\u8a66\u3002",
+        "scroll.update_error_older_build": "Mouser \u5df2\u62d2\u7d55\u8f03\u820a\u7684\u66f4\u65b0\u3002",
+        "scroll.update_check": "\u6aa2\u67e5",
+        "scroll.update_download": "\u4e0b\u8f09",
+        "scroll.update_verify": "\u9a57\u8b49",
+        "scroll.update_install": "\u5b89\u88dd",
+        "scroll.update_cancel": "\u53d6\u6d88",
+        "scroll.update_open_release": "\u958b\u555f\u767c\u5e03\u9801",
+        "scroll.scroll_speed": "\u6eda\u8f2a\u901f\u5ea6",
+        "scroll.scroll_speed_desc": "\u8abf\u6574\u6bcf\u6b21\u6eda\u8f2a\u6eda\u52d5\u7684\u9801\u9762\u79fb\u52d5\u901f\u5ea6\u30021.0\u00d7 \u70ba\u7cfb\u7d71\u9810\u8a2d\u3002",
+        "scroll.scroll_speed_presets": "\u9810\u8a2d\uff1a",
+        "scroll.smooth_scroll": "\u5e73\u6ed1\u6372\u52d5",
+        "scroll.smooth_scroll_desc": "\u6eda\u8f2a\u6eda\u52d5\u5f8c\u6dfb\u52a0\u6163\u6027\u6ed1\u884c\u6548\u679c\uff0c\u8b93\u6372\u52d5\u9ad4\u9a57\u66f4\u9806\u66a2\u3002",
+        "scroll.scroll_direction": "\u6372\u52d5\u65b9\u5411",
+        "scroll.scroll_direction_desc": "\u53cd\u8f49\u6372\u52d5\u65b9\u5411\uff08\u81ea\u7136\u6372\u52d5\uff09",
+        "scroll.invert_vertical": "\u53cd\u8f49\u5782\u76f4\u6372\u52d5",
+        "scroll.invert_horizontal": "\u53cd\u8f49\u6c34\u5e73\u6372\u52d5",
+        "scroll.ignore_trackpad": "\u5ffd\u7565\u89f8\u63a7\u677f",
+        "scroll.ignore_trackpad_desc": "\u50c5\u56de\u61c9\u6ed1\u9f20\u4e8b\u4ef6\uff0c\u4e0d\u56de\u61c9\u89f8\u63a7\u677f\u6216 Magic Mouse",
+        "scroll.dpi_note": "DPI \u66f4\u6539\u9700\u8981\u900f\u904e HID++ \u8207\u88dd\u7f6e\u901a\u8a0a\uff0c\u5c07\u5728\u77ed\u66ab\u5ef6\u9072\u5f8c\u751f\u6548\u3002",
+        "scroll.language": "\u8a9e\u8a00",
+        "scroll.language_desc": "\u9078\u64c7\u61c9\u7528\u7a0b\u5f0f\u7684\u986f\u793a\u8a9e\u8a00\u3002",
+
+        "key_capture.title": "\u81ea\u8a02\u5feb\u901f\u9375",
+        "key_capture.placeholder": "\u4f8b\u5982\uff1asuper+shift+f5",
+        "key_capture.placeholder_recording": "\u8acb\u6309\u4e0b\u5feb\u901f\u9375\u2026",
+        "key_capture.record_hint": "\u8acb\u76f4\u63a5\u6309\u4e0b\u6240\u9700\u6309\u9375\u3002Win \u7b49\u4fee\u98fe\u9375\u6703\u5728\u6b64\u8655\u88ab\u64f7\u53d6\uff0c\u4e0d\u6703\u50b3\u905e\u7d66\u7cfb\u7d71\u3002",
+        "key_capture.type_hint": "\u4f7f\u7528 + \u9023\u63a5\u5404\u500b\u6309\u9375\u8f38\u5165\uff0c\u4f8b\u5982\uff1asuper+shift+f5\u3002",
+        "key_capture.mode_type": "\u6539\u70ba\u8f38\u5165",
+        "key_capture.mode_record": "\u9304\u88fd\u6309\u9375",
+        "key_capture.valid_keys": "\u6709\u6548\u6309\u9375\uff1actrl/control\u3001shift\u3001alt/option/opt\u3001super\uff08\u5225\u540d\uff1acmd\u3001command\u3001meta\u3001win\u3001windows\uff09\u30010\u20139\u3001a\u2013z\u3001f1\u2013f24\u3001\nspace\u3001tab\u3001enter\u3001esc\u3001left\u3001right\u3001up\u3001down\u3001delete\u2026\u2026",
+        "key_capture.reserved_warning": "\u64cd\u4f5c\u7cfb\u7d71\u53ef\u80fd\u6703\u622a\u7372\u6b64\u5feb\u901f\u9375\u3002\u4ecd\u53ef\u4ee5\u5132\u5b58\uff0c\u4f46\u884c\u70ba\u53ef\u80fd\u56e0\u7cfb\u7d71\u800c\u7570\u3002",
+        "key_capture.error.unsupported_key": "\u8acb\u9078\u64c7\u5176\u4ed6\u6309\u9375\u3002%1 \u5728 Mouser \u4e2d\u7121\u6cd5\u4f7f\u7528\u3002",
+        "key_capture.error.unknown_key": "\u7121\u6cd5\u8b58\u5225\uff1a%1\u3002",
+        "key_capture.error.duplicate_key": "\u8acb\u79fb\u9664\u91cd\u8907\u6309\u9375\u3002",
+        "key_capture.error.multiple_main_keys": "\u53ea\u80fd\u4f7f\u7528\u4e00\u500b\u4e3b\u6309\u9375\uff0c\u53ef\u642d\u914d Ctrl\u3001Shift\u3001Alt \u6216 Super\u3002",
+        "key_capture.error.missing_main_key": "\u8acb\u52a0\u5165\u4e00\u500b\u6309\u9375\uff0c\u4f8b\u5982 A\u3001F5 \u6216 Page Down\u3002",
+        "key_capture.error.empty_segment": "+ \u53ea\u7528\u65bc\u5206\u9694\u6309\u9375\uff1b\u5982\u9700\u8f38\u5165\u52a0\u865f\uff0c\u8acb\u8f38\u5165 plus\u3002",
+        "key_capture.error.unsupported": "\u7121\u6cd5\u4f7f\u7528\u6b64\u5feb\u901f\u9375\u3002",
+        "key_capture.cancel": "\u53d6\u6d88",
+        "key_capture.confirm": "\u78ba\u8a8d",
+
+        "tray.open_settings": "\u958b\u555f\u8a2d\u5b9a",
+        "tray.disable_remapping": "\u505c\u7528\u6309\u9375\u91cd\u65b0\u5c0d\u6620",
+        "tray.enable_remapping": "\u555f\u7528\u6309\u9375\u91cd\u65b0\u5c0d\u6620",
+        "tray.enable_debug": "\u555f\u7528\u9664\u932f\u6a21\u5f0f",
+        "tray.disable_debug": "\u505c\u7528\u9664\u932f\u6a21\u5f0f",
+        "tray.check_for_updates": "\u6aa2\u67e5\u66f4\u65b0...",
+        "tray.open_latest_release": "\u958b\u555f\u6700\u65b0\u7248\u672c\u9801\u9762",
+        "tray.update_available": "Mouser {version} \u53ef\u7528\u3002\u8acb\u958b\u555f\u767c\u5e03\u9801\u9762\u624b\u52d5\u4e0b\u8f09\u3002",
+        "tray.quit": "\u7d50\u675f Mouser",
+        "tray.tray_message": "Mouser \u6b63\u5728\u7cfb\u7d71\u5217\u4e2d\u57f7\u884c\u3002\u9ede\u64ca\u5716\u793a\u958b\u555f\u8a2d\u5b9a\u3002",
+
+        "accessibility.title": "\u9700\u8981\u8f14\u52a9\u4f7f\u7528\u6b0a\u9650",
+        "accessibility.text": (
+            "Mouser \u9700\u8981\u8f14\u52a9\u4f7f\u7528\u6b0a\u9650\u4ee5\u6514\u622a\u6ed1\u9f20\u6309\u9375\u4e8b\u4ef6\u3002\n\n"
+            "macOS \u61c9\u5df2\u958b\u555f\u7cfb\u7d71\u8a2d\u5b9a\u63d0\u793a\u3002\n"
+            "\u8acb\u6388\u4e88\u6b0a\u9650\uff0c\u7136\u5f8c\u91cd\u65b0\u555f\u52d5 Mouser\u3002"
+        ),
+        "accessibility.info": "\u7cfb\u7d71\u8a2d\u5b9a -> \u96b1\u79c1\u6b0a\u8207\u5b89\u5168\u6027 -> \u8f14\u52a9\u4f7f\u7528",
+
+        "dialog.close": "\u95dc\u9589",
+
+        "about.title": "\u95dc\u65bc Mouser",
+        "about.subtitle": "\u63d0\u4f9b\u652f\u63f4\u8207\u9664\u932f\u7528\u7684\u57f7\u884c\u6642\u8207\u5efa\u7f6e\u8cc7\u8a0a\u3002",
+        "about.version": "\u7248\u672c",
+        "about.build_mode": "\u5efa\u7f6e\u6a21\u5f0f",
+        "about.commit": "\u63d0\u4ea4",
+        "about.launch_path": "\u555f\u52d5\u8def\u5f91",
+        "about.close": "\u95dc\u9589",
+
+        "lang.en": "English",
+        "lang.zh_CN": "\u7b80\u4f53\u4e2d\u6587",
+        "lang.zh_TW": "\u7e41\u9ad4\u4e2d\u6587",
+    },
+}
+
+AVAILABLE_LANGUAGES = [
+    {"code": "en",    "name": "English"},
+    {"code": "zh_CN", "name": "\u7b80\u4f53\u4e2d\u6587"},
+    {"code": "zh_TW", "name": "\u7e41\u9ad4\u4e2d\u6587"},
+]
+
+# ── Button name translations ──────────────────────────────────────────────────
+# Key = English name from config.py BUTTON_NAMES / PROFILE_BUTTON_NAMES
+_BUTTON_TR: dict[str, dict[str, str]] = {
+    "zh_CN": {
+        "Middle button":          "\u4e2d\u952e",
+        "Gesture button":         "\u624b\u52bf\u952e",
+        "Back button":            "\u540e\u9000\u952e",
+        "Forward button":         "\u524d\u8fdb\u952e",
+        "Thumb button":           "\u62c7\u6307\u952e",
+        "Horizontal scroll":      "\u6c34\u5e73\u6eda\u52a8",
+        "Horizontal scroll right":"\u6c34\u5e73\u53f3\u6eda",
+        "Horizontal Scroll":      "\u6c34\u5e73\u6eda\u52a8",
+        "Mode shift button":      "\u6a21\u5f0f\u5207\u6362\u952e",
+        "Gesture swipe left":     "\u624b\u52bf\u5de6\u6ed1",
+        "Gesture swipe right":    "\u624b\u52bf\u53f3\u6ed1",
+        "Gesture swipe up":       "\u624b\u52bf\u4e0a\u6ed1",
+        "Gesture swipe down":     "\u624b\u52bf\u4e0b\u6ed1",
+        "Actions Ring swipe left":  "\u52a8\u4f5c\u73af\u5de6\u6ed1",
+        "Actions Ring swipe right": "\u52a8\u4f5c\u73af\u53f3\u6ed1",
+        "Actions Ring swipe up":    "\u52a8\u4f5c\u73af\u4e0a\u6ed1",
+        "Actions Ring swipe down":  "\u52a8\u4f5c\u73af\u4e0b\u6ed1",
+        "Actions Ring": "\u52a8\u4f5c\u73af",
+    },
+    "zh_TW": {
+        "Middle button":          "\u4e2d\u9375",
+        "Gesture button":         "\u624b\u52e2\u9375",
+        "Back button":            "\u5f8c\u9000\u9375",
+        "Forward button":         "\u524d\u9032\u9375",
+        "Thumb button":           "\u62c7\u6307\u9375",
+        "Horizontal scroll":      "\u6c34\u5e73\u6372\u52d5",
+        "Horizontal scroll right":"\u6c34\u5e73\u53f3\u6372",
+        "Horizontal Scroll":      "\u6c34\u5e73\u6372\u52d5",
+        "Mode shift button":      "\u6a21\u5f0f\u5207\u63db\u9375",
+        "Gesture swipe left":     "\u624b\u52e2\u5de6\u6ed1",
+        "Gesture swipe right":    "\u624b\u52e2\u53f3\u6ed1",
+        "Gesture swipe up":       "\u624b\u52e2\u4e0a\u6ed1",
+        "Gesture swipe down":     "\u624b\u52e2\u4e0b\u6ed1",
+        "Actions Ring swipe left":  "\u52d5\u4f5c\u74b0\u5de6\u6ed1",
+        "Actions Ring swipe right": "\u52d5\u4f5c\u74b0\u53f3\u6ed1",
+        "Actions Ring swipe up":    "\u52d5\u4f5c\u74b0\u4e0a\u6ed1",
+        "Actions Ring swipe down":  "\u52d5\u4f5c\u74b0\u4e0b\u6ed1",
+        "Actions Ring": "\u52d5\u4f5c\u74b0",
+    },
+}
+
+# ── Action category translations ──────────────────────────────────────────────
+_CATEGORY_TR: dict[str, dict[str, str]] = {
+    "zh_CN": {
+        "Other":      "\u5176\u4ed6",
+        "Browser":    "\u6d4f\u89c8\u5668",
+        "Editing":    "\u7f16\u8f91",
+        "Media":      "\u5a92\u4f53",
+        "Navigation": "\u5bfc\u822a",
+        "Scroll":     "\u6eda\u8f6e",
+        "Screenshot": "\u622a\u56fe",
+        "Custom":     "\u81ea\u5b9a\u4e49",
+    },
+    "zh_TW": {
+        "Other":      "\u5176\u4ed6",
+        "Browser":    "\u700f\u89bd\u5668",
+        "Editing":    "\u7de8\u8f2f",
+        "Media":      "\u5a92\u9ad4",
+        "Navigation": "\u5c0e\u822a",
+        "Scroll":     "\u6eda\u8f2a",
+        "Screenshot": "\u622a\u5716",
+        "Custom":     "\u81ea\u8a02",
+    },
+}
+
+# ── Action label translations ─────────────────────────────────────────────────
+# Key = exact English label returned by key_simulator.py / backend.
+# Key combos in parentheses are preserved verbatim in the translated string.
+_ACTION_TR: dict[str, dict[str, str]] = {
+    "zh_CN": {
+        # ── Other ─────────────────────────────────────────────────────
+        "Do Nothing (Pass-through)":                "\u65e0\u64cd\u4f5c\uff08\u76f4\u901a\uff09",
+
+        # ── Navigation (Windows) ──────────────────────────────────────
+        "Alt + Tab (Switch Windows)":               "Alt + Tab\uff08\u5207\u6362\u7a97\u53e3\uff09",
+        "Alt + Shift + Tab (Switch Windows Reverse)":"Alt + Shift + Tab\uff08\u53cd\u5411\u5207\u6362\uff09",
+        "Show Desktop (Win+D)":                     "\u663e\u793a\u684c\u9762 (Win+D)",
+        "Task View (Win+Tab)":                      "\u4efb\u52a1\u89c6\u56fe (Win+Tab)",
+        "Previous Desktop":                         "\u4e0a\u4e00\u4e2a\u684c\u9762",
+        "Next Desktop":                             "\u4e0b\u4e00\u4e2a\u684c\u9762",
+        "Cycle Desktops":                           "\u5faa\u73af\u5207\u6362\u684c\u9762",
+        "Page Up":                                  "\u5411\u4e0a\u7ffb\u9875",
+        "Page Down":                                "\u5411\u4e0b\u7ffb\u9875",
+        "Home":                                     "\u884c\u9996 (Home)",
+        "End":                                      "\u884c\u5c3e (End)",
+        "Zoom In":                                  "\u653e\u5927",
+        "Zoom Out":                                 "\u7f29\u5c0f",
+
+        # ── Navigation (macOS) ────────────────────────────────────────
+        "Cmd + Tab (Switch Windows)":               "Cmd + Tab\uff08\u5207\u6362\u7a97\u53e3\uff09",
+        "Cmd + Shift + Tab (Switch Windows Reverse)":"Cmd + Shift + Tab\uff08\u53cd\u5411\u5207\u6362\uff09",
+        "Mission Control (Ctrl+Up)":                "\u4efb\u52a1\u63a7\u5236 (Ctrl+\u2191)",
+        "Mission Control":                          "\u4efb\u52a1\u63a7\u5236",
+        "App Expose":                               "\u5e94\u7528 Expos\u00e9",
+        "Show Desktop":                             "\u663e\u793a\u684c\u9762",
+        "Launchpad":                                "\u542f\u52a8\u53f0",
+
+        # ── Navigation (Linux) ────────────────────────────────────────
+        "Show Desktop (Super+D)":                   "\u663e\u793a\u684c\u9762 (Super+D)",
+        "Activities (Super)":                       "\u6d3b\u52a8\u8868 (Super)",
+
+        # ── Browser ───────────────────────────────────────────────────
+        "Browser Back":                             "\u6d4f\u89c8\u5668\u540e\u9000",
+        "Browser Forward":                          "\u6d4f\u89c8\u5668\u524d\u8fdb",
+        "Browser Back (Cmd+[)":                     "\u6d4f\u89c8\u5668\u540e\u9000 (Cmd+[)",
+        "Browser Forward (Cmd+])":                  "\u6d4f\u89c8\u5668\u524d\u8fdb (Cmd+])",
+        "Close Tab (Ctrl+W)":                       "\u5173\u95ed\u6807\u7b7e\u9875 (Ctrl+W)",
+        "Close Tab (Cmd+W)":                        "\u5173\u95ed\u6807\u7b7e\u9875 (Cmd+W)",
+        "New Tab (Ctrl+T)":                         "\u65b0\u5efa\u6807\u7b7e\u9875 (Ctrl+T)",
+        "New Tab (Cmd+T)":                          "\u65b0\u5efa\u6807\u7b7e\u9875 (Cmd+T)",
+        "Next Tab (Ctrl+Tab)":                      "\u4e0b\u4e00\u4e2a\u6807\u7b7e\u9875 (Ctrl+Tab)",
+        "Next Tab (Cmd+Shift+])":                   "\u4e0b\u4e00\u4e2a\u6807\u7b7e\u9875 (Cmd+Shift+])",
+        "Previous Tab (Ctrl+Shift+Tab)":            "\u4e0a\u4e00\u4e2a\u6807\u7b7e\u9875 (Ctrl+Shift+Tab)",
+        "Previous Tab (Cmd+Shift+[)":               "\u4e0a\u4e00\u4e2a\u6807\u7b7e\u9875 (Cmd+Shift+[)",
+
+        # ── Editing ───────────────────────────────────────────────────
+        "Copy (Ctrl+C)":        "\u590d\u5236 (Ctrl+C)",
+        "Copy (Cmd+C)":         "\u590d\u5236 (Cmd+C)",
+        "Paste (Ctrl+V)":       "\u7c98\u8d34 (Ctrl+V)",
+        "Paste (Cmd+V)":        "\u7c98\u8d34 (Cmd+V)",
+        "Cut (Ctrl+X)":         "\u526a\u5207 (Ctrl+X)",
+        "Cut (Cmd+X)":          "\u526a\u5207 (Cmd+X)",
+        "Undo (Ctrl+Z)":        "\u64a4\u9500 (Ctrl+Z)",
+        "Undo (Cmd+Z)":         "\u64a4\u9500 (Cmd+Z)",
+        "Select All (Ctrl+A)":  "\u5168\u9009 (Ctrl+A)",
+        "Select All (Cmd+A)":   "\u5168\u9009 (Cmd+A)",
+        "Save (Ctrl+S)":        "\u4fdd\u5b58 (Ctrl+S)",
+        "Save (Cmd+S)":         "\u4fdd\u5b58 (Cmd+S)",
+        "Find (Ctrl+F)":        "\u67e5\u627e (Ctrl+F)",
+        "Find (Cmd+F)":         "\u67e5\u627e (Cmd+F)",
+
+        # ── Media ─────────────────────────────────────────────────────
+        "Volume Up":            "\u97f3\u91cf\u589e\u5927",
+        "Volume Down":          "\u97f3\u91cf\u51cf\u5c0f",
+        "Volume Mute":          "\u9759\u97f3",
+        "Play / Pause":         "\u64ad\u653e/\u6682\u505c",
+        "Next Track":           "\u4e0b\u4e00\u9996",
+        "Previous Track":       "\u4e0a\u4e00\u9996",
+
+        # ── Scroll ────────────────────────────────────────────────────
+        "Toggle SmartShift":                        "\u5207\u6362 SmartShift \u5f00\u5173",
+        "Switch Scroll Mode (Ratchet / Free Spin)": "\u5207\u6362\u6eda\u8f6e\u6a21\u5f0f\uff08\u68d8\u8f6e / \u98de\u8f6e\uff09",
+
+        # ── Screenshot ────────────────────────────────────────────────
+        "Screenshot Region \u2192 Clipboard":       "\u533a\u57df\u622a\u56fe \u2192 \u526a\u8d34\u677f",
+        "Screenshot Region \u2192 File":            "\u533a\u57df\u622a\u56fe \u2192 \u6587\u4ef6",
+        "Screenshot Full Screen \u2192 Clipboard":  "\u5168\u5c4f\u622a\u56fe \u2192 \u526a\u8d34\u677f",
+        "Screenshot Full Screen \u2192 File":       "\u5168\u5c4f\u622a\u56fe \u2192 \u6587\u4ef6",
+
+        # ── Custom ────────────────────────────────────────────────────
+        "Custom Shortcut\u2026": "\u81ea\u5b9a\u4e49\u5feb\u6377\u952e\u2026",
+    },
+    "zh_TW": {
+        # ── Other ─────────────────────────────────────────────────────
+        "Do Nothing (Pass-through)":                "\u7121\u64cd\u4f5c\uff08\u76f4\u901a\uff09",
+
+        # ── Navigation (Windows) ──────────────────────────────────────
+        "Alt + Tab (Switch Windows)":               "Alt + Tab\uff08\u5207\u63db\u8996\u7a97\uff09",
+        "Alt + Shift + Tab (Switch Windows Reverse)":"Alt + Shift + Tab\uff08\u53cd\u5411\u5207\u63db\uff09",
+        "Show Desktop (Win+D)":                     "\u986f\u793a\u684c\u9762 (Win+D)",
+        "Task View (Win+Tab)":                      "\u5de5\u4f5c\u8996\u5716 (Win+Tab)",
+        "Previous Desktop":                         "\u4e0a\u4e00\u500b\u684c\u9762",
+        "Next Desktop":                             "\u4e0b\u4e00\u500b\u684c\u9762",
+        "Cycle Desktops":                           "\u5faa\u74b4\u5207\u63db\u684c\u9762",
+        "Page Up":                                  "\u5411\u4e0a\u7ffb\u9801",
+        "Page Down":                                "\u5411\u4e0b\u7ffb\u9801",
+        "Home":                                     "\u884c\u9996 (Home)",
+        "End":                                      "\u884c\u5c3e (End)",
+        "Zoom In":                                  "\u653e\u5927",
+        "Zoom Out":                                 "\u7e2e\u5c0f",
+
+        # ── Navigation (macOS) ────────────────────────────────────────
+        "Cmd + Tab (Switch Windows)":               "Cmd + Tab\uff08\u5207\u63db\u8996\u7a97\uff09",
+        "Cmd + Shift + Tab (Switch Windows Reverse)":"Cmd + Shift + Tab\uff08\u53cd\u5411\u5207\u63db\uff09",
+        "Mission Control (Ctrl+Up)":                "\u4efb\u52d9\u63a7\u5236 (Ctrl+\u2191)",
+        "Mission Control":                          "\u4efb\u52d9\u63a7\u5236",
+        "App Expose":                               "\u61c9\u7528\u7a0b\u5f0f Expos\u00e9",
+        "Show Desktop":                             "\u986f\u793a\u684c\u9762",
+        "Launchpad":                                "\u555f\u52d5\u53f0",
+
+        # ── Navigation (Linux) ────────────────────────────────────────
+        "Show Desktop (Super+D)":                   "\u986f\u793a\u684c\u9762 (Super+D)",
+        "Activities (Super)":                       "\u6d3b\u52d5\u8996\u5716 (Super)",
+
+        # ── Browser ───────────────────────────────────────────────────
+        "Browser Back":                             "\u700f\u89bd\u5668\u5f8c\u9000",
+        "Browser Forward":                          "\u700f\u89bd\u5668\u524d\u9032",
+        "Browser Back (Cmd+[)":                     "\u700f\u89bd\u5668\u5f8c\u9000 (Cmd+[)",
+        "Browser Forward (Cmd+])":                  "\u700f\u89bd\u5668\u524d\u9032 (Cmd+])",
+        "Close Tab (Ctrl+W)":                       "\u95dc\u9589\u6a19\u7c64\u9801 (Ctrl+W)",
+        "Close Tab (Cmd+W)":                        "\u95dc\u9589\u6a19\u7c64\u9801 (Cmd+W)",
+        "New Tab (Ctrl+T)":                         "\u65b0\u5efa\u6a19\u7c64\u9801 (Ctrl+T)",
+        "New Tab (Cmd+T)":                          "\u65b0\u5efa\u6a19\u7c64\u9801 (Cmd+T)",
+        "Next Tab (Ctrl+Tab)":                      "\u4e0b\u4e00\u500b\u6a19\u7c64\u9801 (Ctrl+Tab)",
+        "Next Tab (Cmd+Shift+])":                   "\u4e0b\u4e00\u500b\u6a19\u7c64\u9801 (Cmd+Shift+])",
+        "Previous Tab (Ctrl+Shift+Tab)":            "\u4e0a\u4e00\u500b\u6a19\u7c64\u9801 (Ctrl+Shift+Tab)",
+        "Previous Tab (Cmd+Shift+[)":               "\u4e0a\u4e00\u500b\u6a19\u7c64\u9801 (Cmd+Shift+[)",
+
+        # ── Editing ───────────────────────────────────────────────────
+        "Copy (Ctrl+C)":        "\u8907\u88fd (Ctrl+C)",
+        "Copy (Cmd+C)":         "\u8907\u88fd (Cmd+C)",
+        "Paste (Ctrl+V)":       "\u8cbc\u4e0a (Ctrl+V)",
+        "Paste (Cmd+V)":        "\u8cbc\u4e0a (Cmd+V)",
+        "Cut (Ctrl+X)":         "\u526a\u5207 (Ctrl+X)",
+        "Cut (Cmd+X)":          "\u526a\u5207 (Cmd+X)",
+        "Undo (Ctrl+Z)":        "\u5fa9\u539f (Ctrl+Z)",
+        "Undo (Cmd+Z)":         "\u5fa9\u539f (Cmd+Z)",
+        "Select All (Ctrl+A)":  "\u5168\u9078 (Ctrl+A)",
+        "Select All (Cmd+A)":   "\u5168\u9078 (Cmd+A)",
+        "Save (Ctrl+S)":        "\u5132\u5b58 (Ctrl+S)",
+        "Save (Cmd+S)":         "\u5132\u5b58 (Cmd+S)",
+        "Find (Ctrl+F)":        "\u5c0b\u627e (Ctrl+F)",
+        "Find (Cmd+F)":         "\u5c0b\u627e (Cmd+F)",
+
+        # ── Media ─────────────────────────────────────────────────────
+        "Volume Up":            "\u97f3\u91cf\u589e\u5927",
+        "Volume Down":          "\u97f3\u91cf\u6e1b\u5c0f",
+        "Volume Mute":          "\u975c\u97f3",
+        "Play / Pause":         "\u64ad\u653e/\u66ab\u505c",
+        "Next Track":           "\u4e0b\u4e00\u9996",
+        "Previous Track":       "\u4e0a\u4e00\u9996",
+
+        # ── Scroll ────────────────────────────────────────────────────
+        "Toggle SmartShift":                        "\u5207\u63db SmartShift \u958b\u95dc",
+        "Switch Scroll Mode (Ratchet / Free Spin)": "\u5207\u63db\u6eda\u8f2a\u6a21\u5f0f\uff08\u68d8\u8f2a / \u98db\u8f2a\uff09",
+
+        # ── Screenshot ────────────────────────────────────────────────
+        "Screenshot Region \u2192 Clipboard":       "\u5340\u57df\u622a\u5716 \u2192 \u526a\u8cbc\u7c3f",
+        "Screenshot Region \u2192 File":            "\u5340\u57df\u622a\u5716 \u2192 \u6a94\u6848",
+        "Screenshot Full Screen \u2192 Clipboard":  "\u5168\u87a2\u5e55\u622a\u5716 \u2192 \u526a\u8cbc\u7c3f",
+        "Screenshot Full Screen \u2192 File":       "\u5168\u87a2\u5e55\u622a\u5716 \u2192 \u6a94\u6848",
+
+        # ── Custom ────────────────────────────────────────────────────
+        "Custom Shortcut\u2026": "\u81ea\u8a02\u5feb\u901f\u9375\u2026",
+    },
+}
+
+
+class LocaleManager(QObject):
+    """Manages the active UI language and exposes translations to QML."""
+
+    languageChanged = Signal()
+
+    def __init__(self, language: str = "en", parent=None):
+        super().__init__(parent)
+        lang = language if language in _TRANSLATIONS else "en"
+        self._language = lang
+        self._strings: dict = dict(_TRANSLATIONS[lang])
+
+    # ── language property ─────────────────────────────────────────
+    @Property(str, notify=languageChanged)
+    def language(self) -> str:
+        return self._language
+
+    @Slot(str)
+    def setLanguage(self, lang: str) -> None:
+        if lang == self._language:
+            return
+        if lang not in _TRANSLATIONS:
+            return
+        self._language = lang
+        self._strings = dict(_TRANSLATIONS[lang])
+        self.languageChanged.emit()
+
+    # ── strings map (QVariantMap) ─────────────────────────────────
+    @Property("QVariantMap", notify=languageChanged)
+    def strings(self) -> dict:
+        """Return the full translation dictionary for the active language."""
+        return self._strings
+
+    # ── helper slot usable from Python ───────────────────────────
+    @Slot(str, result=str)
+    def tr(self, key: str) -> str:
+        return self._strings.get(key, key)
+
+    # ── button / action / category translation slots for QML ─────
+    @Slot(str, result=str)
+    def trButton(self, english_name: str) -> str:
+        """Translate a button name (e.g. 'Middle button' → '中键')."""
+        return _BUTTON_TR.get(self._language, {}).get(english_name, english_name)
+
+    @Slot(str, result=str)
+    def trAction(self, english_label: str) -> str:
+        """Translate an action label (e.g. 'Copy (Cmd+C)' → '复制 (Cmd+C)')."""
+        return _ACTION_TR.get(self._language, {}).get(english_label, english_label)
+
+    @Slot(str, result=str)
+    def trCategory(self, english_cat: str) -> str:
+        """Translate an action category (e.g. 'Browser' → '浏览器')."""
+        return _CATEGORY_TR.get(self._language, {}).get(english_cat, english_cat)
+
+    # ── available languages list ──────────────────────────────────
+    @Property(list, constant=True)
+    def availableLanguages(self) -> list:
+        return AVAILABLE_LANGUAGES
