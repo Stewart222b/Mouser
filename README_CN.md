@@ -1,5 +1,7 @@
 # Mouser — 罗技鼠标按键映射工具
 
+> **社区定制分支：** Windows Ctrl＋左键点击、按键震动修复、构建方法和配置示例见[定制功能与维护说明](CUSTOMIZATIONS.md)。`main` 跟随上游，`custom` 维护定制改动。以下保留上游文档。
+
 <p align="center">
   <img src="images/logo_icon.png" width="128" alt="Mouser logo" />
 </p>

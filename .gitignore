@@ -40,3 +40,15 @@ build_icon.py
 
 # Shortcuts (user-specific paths)
 *.lnk
+
+# Local configuration, diagnostics and deployment output are never published.
+/config.json
+/config.before-*.json
+/local-config/
+/logs/
+/backups/
+/outputs/
+/work/
+*.log
+*.dmp
+*.reg

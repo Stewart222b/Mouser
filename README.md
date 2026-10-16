@@ -1,5 +1,7 @@
 # Mouser — Logitech Mouse Remapper
 
+> **Community customization fork:** see [Custom features and maintenance](CUSTOMIZATIONS.md) for Windows Ctrl+click, button-haptic fixes, builds, and configuration examples. `main` tracks upstream; `custom` contains the additions. Upstream documentation follows below.
+
 <p align="center">
   <img src="images/logo_icon.png" width="128" alt="Mouser logo" />
 </p>

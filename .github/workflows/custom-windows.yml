@@ -1,0 +1,40 @@
+name: Custom Windows
+
+on:
+  push:
+    branches: [custom]
+  pull_request:
+    branches: [custom]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install -r requirements-ctrlclick.txt
+      - name: Test custom input, haptics and packaging
+        run: >-
+          python -m unittest
+          tests.test_ctrl_left_click tests.test_ctrl_click_profiles
+          tests.test_mouse_mapping_haptics tests.test_engine
+          tests.test_key_simulator tests.test_spec_coverage
+      - name: Build portable app
+        run: python -m PyInstaller Mouser.spec --noconfirm
+      - name: Include license and customization notes
+        shell: pwsh
+        run: |
+          Copy-Item -LiteralPath LICENSE -Destination dist/Mouser/LICENSE
+          Copy-Item -LiteralPath CUSTOMIZATIONS.md -Destination dist/Mouser/CUSTOMIZATIONS.md
+          Compress-Archive -Path dist/Mouser -DestinationPath Mouser-custom-Windows.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Mouser-custom-Windows
+          path: Mouser-custom-Windows.zip
