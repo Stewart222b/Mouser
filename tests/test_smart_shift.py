@@ -526,6 +526,21 @@ except ModuleNotFoundError:
 
 @unittest.skipIf(Backend is None, "PySide6 not installed in test environment")
 class BackendSmartShiftTests(unittest.TestCase):
+    def _apply_wheel_edit(self, backend, method, value):
+        engine = Mock()
+        backend._engine = engine
+        workers = []
+        def deferred_thread(*, target, name, daemon):
+            return SimpleNamespace(start=lambda: workers.append(target))
+        with patch("ui.backend.save_config") as save, \
+             patch("ui.backend.threading.Thread", side_effect=deferred_thread):
+            getattr(backend, method)(value)
+            engine.set_smart_shift.assert_not_called()
+            self.assertEqual(len(workers), 1)
+            workers[0]()
+            save.assert_called_once_with(backend._cfg)
+        return engine
+
     def _make_backend(self, extra_settings=None):
         cfg = copy.deepcopy(DEFAULT_CONFIG)
         if extra_settings:
@@ -576,11 +591,8 @@ class BackendSmartShiftTests(unittest.TestCase):
             "smart_shift_threshold": 30,
             "scroll_force": 50,
         })
-        engine_mock = Mock()
-        backend._engine = engine_mock
-        with patch("ui.backend.save_config"):
-            backend.setSmartShift("freespin")
-        engine_mock.set_smart_shift.assert_called_once_with("freespin", True, 30, 50)
+        engine_mock = self._apply_wheel_edit(backend, "setSmartShift", "freespin")
+        engine_mock.set_smart_shift.assert_called_once_with("freespin", True, 30, 50, persist=False)
 
     def test_set_smart_shift_enabled_sends_all_params_to_engine(self):
         backend = self._make_backend({
@@ -588,11 +600,8 @@ class BackendSmartShiftTests(unittest.TestCase):
             "smart_shift_threshold": 30,
             "scroll_force": 50,
         })
-        engine_mock = Mock()
-        backend._engine = engine_mock
-        with patch("ui.backend.save_config"):
-            backend.setSmartShiftEnabled(True)
-        engine_mock.set_smart_shift.assert_called_once_with("ratchet", True, 30, 50)
+        engine_mock = self._apply_wheel_edit(backend, "setSmartShiftEnabled", True)
+        engine_mock.set_smart_shift.assert_called_once_with("ratchet", True, 30, 50, persist=False)
 
     def test_set_smart_shift_threshold_sends_all_params_to_engine(self):
         backend = self._make_backend({
@@ -600,11 +609,8 @@ class BackendSmartShiftTests(unittest.TestCase):
             "smart_shift_enabled": True,
             "scroll_force": 50,
         })
-        engine_mock = Mock()
-        backend._engine = engine_mock
-        with patch("ui.backend.save_config"):
-            backend.setSmartShiftThreshold(45)
-        engine_mock.set_smart_shift.assert_called_once_with("ratchet", True, 45, 50)
+        engine_mock = self._apply_wheel_edit(backend, "setSmartShiftThreshold", 45)
+        engine_mock.set_smart_shift.assert_called_once_with("ratchet", True, 45, 50, persist=False)
 
     def test_set_scroll_force_updates_config_and_calls_engine(self):
         backend = self._make_backend({
@@ -612,12 +618,9 @@ class BackendSmartShiftTests(unittest.TestCase):
             "smart_shift_enabled": False,
             "smart_shift_threshold": 25,
         })
-        engine_mock = Mock()
-        backend._engine = engine_mock
-        with patch("ui.backend.save_config"):
-            backend.setScrollForce(80)
+        engine_mock = self._apply_wheel_edit(backend, "setScrollForce", 80)
         self.assertEqual(backend._cfg["settings"]["scroll_force"], 80)
-        engine_mock.set_smart_shift.assert_called_once_with("ratchet", False, 25, 80)
+        engine_mock.set_smart_shift.assert_called_once_with("ratchet", False, 25, 80, persist=False)
 
     def test_set_scroll_force_clamps_to_valid_range(self):
         for scroll_force, expected in ((150, 100), (0, 1)):
@@ -627,12 +630,9 @@ class BackendSmartShiftTests(unittest.TestCase):
                     "smart_shift_enabled": False,
                     "smart_shift_threshold": 25,
                 })
-                engine_mock = Mock()
-                backend._engine = engine_mock
-                with patch("ui.backend.save_config"):
-                    backend.setScrollForce(scroll_force)
+                engine_mock = self._apply_wheel_edit(backend, "setScrollForce", scroll_force)
                 self.assertEqual(backend._cfg["settings"]["scroll_force"], expected)
-                engine_mock.set_smart_shift.assert_called_once_with("ratchet", False, 25, expected)
+                engine_mock.set_smart_shift.assert_called_once_with("ratchet", False, 25, expected, persist=False)
 
     def test_smart_shift_force_supported_delegates_to_engine(self):
         backend = self._make_backend()
