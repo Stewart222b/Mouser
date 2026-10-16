@@ -537,7 +537,9 @@ class EngineReplayPhaseOneTests(unittest.TestCase):
             read_smart_shift=Mock(return_value={"mode": "ratchet", "enabled": False, "threshold": 25}),
         )
 
-        engine._battery_poll_loop(stop_event)
+        # This case tests replay gating, independently of desktop idle state.
+        with patch("core.engine._system_idle_seconds", return_value=0.0):
+            engine._battery_poll_loop(stop_event)
 
         engine.hook._hid_gesture.read_battery.assert_called_once_with()
         engine.hook._hid_gesture.read_smart_shift.assert_not_called()
