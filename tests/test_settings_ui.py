@@ -26,7 +26,8 @@ def probe():
     from types import SimpleNamespace
     from unittest.mock import Mock, patch
     sys.path.insert(0, str(ROOT))
-    from PySide6.QtCore import QObject, Property, QUrl, Qt, QMetaObject, Q_ARG, QPointF
+    from PySide6.QtCore import QObject, Property, QUrl, Qt, QMetaObject, Q_ARG, QPointF, QTimer
+    from threading import Event
     from PySide6.QtGui import QPixmap, QFontDatabase, QColor, QPainter
     from PySide6.QtSvg import QSvgRenderer
     from PySide6.QtQuick import QQuickImageProvider, QQuickItem
@@ -90,14 +91,15 @@ def probe():
     fake.force_sensing_range = (0, 255, 128)
     fake.cfg = cfg
     fake.enabled = True
-    for name in ("play_screen_switch_haptic", "reload_mappings", "set_haptic_level", "play_haptic_waveform", "set_dpi", "set_smart_shift"):
+    for name in ("play_screen_switch_haptic", "reload_mappings", "set_haptic_level", "play_haptic_waveform", "preview_haptic_level", "set_dpi", "set_smart_shift"):
         setattr(fake, name, Mock())
     haptic_events = []
-    def apply_haptic(level):
+    def apply_haptic(level, play=True):
         haptic_events.append(("apply", level))
+        if play:
+            haptic_events.append(("preview", level))
         return True
-    fake.set_haptic_level.side_effect = apply_haptic
-    fake.play_haptic_waveform.side_effect = lambda waveform: haptic_events.append(("preview", cfg["settings"]["haptic_level"]))
+    fake.preview_haptic_level.side_effect = apply_haptic
     lm = LocaleManager("zh_CN")
     with patch("ui.backend.load_config", return_value=cfg), patch("ui.backend.save_config") as save, \
          patch("core.config.save_config") as core_save, \
@@ -239,6 +241,42 @@ def probe():
         dpi = find("dpiSetting_slider")
         dpi.forceActiveFocus(); QTest.keyClick(window, Qt.Key.Key_Right); QTest.qWait(350); settle()
         assert cfg["settings"]["dpi"] == device_before["settings"]["dpi"] + 50
+        # A paused drag still stays entirely local until release. The number
+        # follows the handle, and the device receives only the final value.
+        drag_before = cfg["settings"]["dpi"]
+        calls_before = fake.set_dpi.call_count
+        start = dpi.mapToScene(QPointF(25, dpi.height() / 2)).toPoint()
+        end = dpi.mapToScene(QPointF(dpi.width() - 35, dpi.height() / 2)).toPoint()
+        QTest.mousePress(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+        QTest.mouseMove(window, end); QTest.qWait(350); settle()
+        assert dpi.property("pressed")
+        assert cfg["settings"]["dpi"] == drag_before
+        assert fake.set_dpi.call_count == calls_before
+        selected_dpi = round(dpi.property("value"))
+        assert find("dpiSetting_value").property("value") == selected_dpi
+        QTest.mouseRelease(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, end); settle()
+        assert cfg["settings"]["dpi"] == selected_dpi
+        assert fake.set_dpi.call_count == calls_before + 1
+        # Deliberately stall the fake device: Qt must continue processing
+        # timers while that hardware write is still waiting in its worker.
+        started, release, finished = Event(), Event(), Event()
+        def slow_dpi(*args, **kwargs):
+            started.set()
+            try:
+                release.wait(2)
+            finally:
+                finished.set()
+        fake.set_dpi.side_effect = slow_dpi
+        try:
+            backend.setDpi(1800)
+            assert started.wait(1)
+            ticks = []
+            QTimer.singleShot(0, lambda: ticks.append(True)); settle()
+            assert ticks and not finished.is_set(), "DPI I/O must not block the Qt event loop"
+        finally:
+            release.set()
+            assert finished.wait(1)
+            fake.set_dpi.side_effect = None
         precise = find("dpiSetting_value")
         precise.setProperty("value", 1600); precise.valueModified.emit(); settle()
         assert cfg["settings"]["dpi"] == 1600

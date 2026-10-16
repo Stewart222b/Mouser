@@ -11,6 +11,7 @@ SettingRow {
     property real displayMultiplier: 1
     property string suffix: ""
     property bool editableValue: false
+    property bool pendingEdit: false
     signal valueEdited(real newValue)
 
     onValueChanged: {
@@ -43,10 +44,14 @@ SettingRow {
             if (event.key === Qt.Key_Home) { value = from; moved(); event.accepted = true }
             else if (event.key === Qt.Key_End) { value = to; moved(); event.accepted = true }
         }
-        onMoved: saveDelay.restart()
+        onMoved: {
+            row.pendingEdit = true
+            if (!pressed) saveDelay.restart()
+        }
         onPressedChanged: {
-            if (!pressed && saveDelay.running) {
+            if (!pressed && row.pendingEdit) {
                 saveDelay.stop()
+                row.pendingEdit = false
                 row.valueEdited(value)
             }
         }
@@ -65,7 +70,7 @@ SettingRow {
         from: Math.round(row.from)
         to: Math.round(row.to)
         stepSize: Math.round(row.stepSize)
-        value: Math.round(row.value)
+        value: Math.round(slider.value)
         editable: true
         font { family: uiState.fontFamily; pixelSize: 13 }
         Accessible.name: row.label
@@ -81,6 +86,11 @@ SettingRow {
     Timer {
         id: saveDelay
         interval: 300
-        onTriggered: row.valueEdited(slider.value)
+        onTriggered: {
+            if (row.pendingEdit && !slider.pressed) {
+                row.pendingEdit = false
+                row.valueEdited(slider.value)
+            }
+        }
     }
 }

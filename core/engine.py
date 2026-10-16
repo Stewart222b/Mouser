@@ -1476,11 +1476,12 @@ class Engine:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def set_dpi(self, dpi_value):
-        """Send DPI change to the mouse via HID++."""
+    def set_dpi(self, dpi_value, persist=True):
+        """Send DPI via HID++; UI workers use persist=False after saving."""
         dpi = clamp_dpi(dpi_value, self.connected_device)
-        self.cfg.setdefault("settings", {})["dpi"] = dpi
-        save_config(self.cfg)
+        if persist:
+            self.cfg.setdefault("settings", {})["dpi"] = dpi
+            save_config(self.cfg)
         # Try via the hook's HidGestureListener
         hg = self.hook._hid_gesture
         if hg:
@@ -1560,6 +1561,14 @@ class Engine:
         if hg:
             return hg.play_haptic_waveform(waveform_id)
         return False
+
+    def preview_haptic_level(self, level, play=True):
+        """Apply a UI-selected level and preview using ordered direct writes."""
+        hg = self.hook._hid_gesture
+        if not hg or not hg.haptic_supported:
+            return False
+        waveform = 0 if play and self.cfg.get("settings", {}).get("haptic_enabled", True) else None
+        return hg.set_haptic_level_immediate(level, waveform_id=waveform)
 
     def play_screen_switch_haptic(self):
         """Short feedback for a desktop display transition, independent of mappings."""

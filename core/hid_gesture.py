@@ -915,6 +915,7 @@ _UNDIVERT_BUTTON    = 0x02  # 0x02 only         -- revert button-only divert
 _UNDIVERT_RAW_XY    = 0x22  # 0x02 | 0x20       -- revert rawXY divert
 
 MY_SW          = 0x0A        # arbitrary software-id used in our requests
+FAST_HAPTIC_SW = 0x0B        # fire-and-forget replies must not satisfy _request()
 
 HIDPP_ERROR_NAMES = {
     0x01: "UNKNOWN",
@@ -1143,7 +1144,7 @@ class HidGestureListener:
         self._wheel_divert_lock = threading.Lock()
         self._wheel_divert_call_lock = threading.Lock()
         self._wheel_divert_result = None
-        self._tx_lock = threading.Lock()    # serialize concurrent HID writes
+        self._tx_lock = threading.RLock()   # also permits an atomic write batch
         self._haptic_idx = None             # feature index of HAPTIC (0x19B0)
         self._force_sensing_idx = None      # feature index of FORCE_SENSING (0x19C0)
         self._pending_haptic = None
@@ -1424,14 +1425,14 @@ class HidGestureListener:
 
     # ── low-level HID++ I/O ───────────────────────────────────────
 
-    def _tx(self, report_id, feat, func, params):
+    def _tx(self, report_id, feat, func, params, software_id=MY_SW):
         """Transmit an HID++ message.  Always uses 20-byte long format
         because BLE HID collections typically only support long output reports."""
         buf = [0] * LONG_LEN
         buf[0] = LONG_ID                 # always long for BLE compat
         buf[1] = self._dev_idx
         buf[2] = feat
-        buf[3] = ((func & 0x0F) << 4) | (MY_SW & 0x0F)
+        buf[3] = ((func & 0x0F) << 4) | (software_id & 0x0F)
         for i, b in enumerate(params):
             if 4 + i < LONG_LEN:
                 buf[4 + i] = b & 0xFF
@@ -2523,6 +2524,27 @@ class HidGestureListener:
         except Exception as exc:
             print(f"[HidGesture] immediate haptic failed: {exc}")
             self._pending_haptic = ("play", int(waveform_id))
+
+    def set_haptic_level_immediate(self, level, waveform_id=None):
+        """Submit level and optional preview together, without a read-loop wait.
+
+        True confirms writes were submitted, not a device acknowledgement.
+        A separate software ID keeps their replies out of queued requests.
+        """
+        if self._haptic_idx is None or self._dev is None:
+            return False
+        level = max(0, min(3, int(level)))
+        try:
+            with self._tx_lock:
+                self._tx(LONG_ID, self._haptic_idx, 2,
+                         [0x01, self.HAPTIC_DEVICE_LEVELS[level]], FAST_HAPTIC_SW)
+                if waveform_id is not None:
+                    self._tx(LONG_ID, self._haptic_idx, 4,
+                             [int(waveform_id)], FAST_HAPTIC_SW)
+            return True
+        except Exception as exc:
+            print(f"[HidGesture] immediate haptic level failed: {exc}")
+            return False
 
     def _apply_pending_haptic(self):
         """Process queued haptic commands on the listener thread."""

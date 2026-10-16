@@ -309,6 +309,8 @@ class Backend(QObject):
         self._record_mode = False
         self._haptic_level_lock = threading.Lock()
         self._haptic_level_request = 0
+        self._dpi_write_lock = threading.Lock()
+        self._dpi_write_request = 0
         self._gesture_records = []
         self._gesture_active = False
         self._gesture_move_seen = False
@@ -1743,9 +1745,18 @@ class Backend(QObject):
         dpi = clamp_dpi(value, device)
         self._cfg.setdefault("settings", {})["dpi"] = dpi
         save_config(self._cfg)
-        if self._engine:
-            self._engine.set_dpi(dpi)
         self.settingsChanged.emit()
+        self._dpi_write_request += 1
+        request = self._dpi_write_request
+        if self._engine:
+            self._engine.cfg = self._cfg
+            def apply_dpi():
+                with self._dpi_write_lock:
+                    if request == self._dpi_write_request:
+                        # The UI owns persistence; the worker must not replace
+                        # a newer choice or block the GUI on a HID round-trip.
+                        self._engine.set_dpi(dpi, persist=False)
+            threading.Thread(target=apply_dpi, daemon=True, name="SetDpi").start()
 
     def _applySmartShift(self, mode=None, enabled=None, threshold=None, scroll_force=None):
         """Update one or more SmartShift settings, persist config, and push to device."""
@@ -1799,7 +1810,7 @@ class Backend(QObject):
 
     @Slot(int)
     def setHapticLevel(self, level):
-        """Save a user-selected level and preview it after the device applies it."""
+        """Save a user-selected level and submit an ordered immediate preview."""
         level = max(0, min(3, int(level)))
         self._cfg.setdefault("settings", {})["haptic_level"] = level
         save_config(self._cfg)
@@ -1812,10 +1823,8 @@ class Backend(QObject):
                 with self._haptic_level_lock:
                     if request != self._haptic_level_request:
                         return
-                    applied = self._engine.set_haptic_level(level)
-                    if (applied and request == self._haptic_level_request
-                            and self.hapticEnabled and self.hapticSupported):
-                        self._engine.play_haptic_waveform(0)
+                    self._engine.preview_haptic_level(
+                        level, play=self.hapticEnabled and self.hapticSupported)
             threading.Thread(
                 target=apply_and_preview,
                 daemon=True, name="SetHapticLevel"

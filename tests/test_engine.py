@@ -684,5 +684,85 @@ class WheelInvertConnectThreadingTests(unittest.TestCase):
             request.assert_called_once_with(True, False)
 
 
+class SettingsLatencyTests(unittest.TestCase):
+    def test_haptic_preview_submits_state_then_waveform_without_waiting(self):
+        import threading
+        from core.hid_gesture import HidGestureListener, FAST_HAPTIC_SW, MY_SW
+        for level, intensity in ((0, 25), (1, 50), (2, 75), (3, 100)):
+            with self.subTest(level=level):
+                listener = HidGestureListener.__new__(HidGestureListener)
+                listener._dev = Mock()
+                listener._dev_idx = 0xFF
+                listener._haptic_idx = 0x25
+                listener._tx_lock = threading.RLock()
+                listener._request = Mock(side_effect=AssertionError("must not wait for acknowledgement"))
+                listener._rx = Mock(side_effect=AssertionError("must not wait for listener"))
+                self.assertTrue(listener.set_haptic_level_immediate(level, waveform_id=0))
+                packets = [c.args[0] for c in listener._dev.write.call_args_list]
+                self.assertEqual(len(packets), 2)
+                self.assertEqual(packets[0][2:6], [0x25, 0x20 | FAST_HAPTIC_SW, 1, intensity])
+                self.assertEqual(packets[1][2:5], [0x25, 0x40 | FAST_HAPTIC_SW, 0])
+                self.assertNotEqual(FAST_HAPTIC_SW, MY_SW)
+                listener._request.assert_not_called()
+                listener._rx.assert_not_called()
+
+    def test_haptic_preview_failed_state_write_does_not_send_waveform(self):
+        import threading
+        from core.hid_gesture import HidGestureListener
+        listener = HidGestureListener.__new__(HidGestureListener)
+        listener._dev = Mock()
+        listener._dev.write.side_effect = OSError("disconnected")
+        listener._dev_idx = 0xFF
+        listener._haptic_idx = 0x25
+        listener._tx_lock = threading.RLock()
+        self.assertFalse(listener.set_haptic_level_immediate(0, waveform_id=0))
+        self.assertEqual(listener._dev.write.call_count, 1)
+
+    def test_fast_preview_reply_cannot_complete_a_queued_request(self):
+        from core.hid_gesture import HidGestureListener, FAST_HAPTIC_SW, MY_SW, LONG_ID
+        listener = HidGestureListener.__new__(HidGestureListener)
+        listener._connected = False
+        listener._consecutive_request_timeouts = 0
+        listener._tx = Mock()
+        fast = [LONG_ID, 0xFF, 0x25, 0x20 | FAST_HAPTIC_SW, 1, 25] + [0] * 14
+        expected = [LONG_ID, 0xFF, 0x25, 0x20 | MY_SW, 1, 50] + [0] * 14
+        listener._rx = Mock(side_effect=[fast, expected])
+        listener._on_report = Mock()
+        result = listener._request(0x25, 2, [1, 50])
+        self.assertEqual(result[3], MY_SW)
+        listener._on_report.assert_called_once_with(fast)
+
+    def test_engine_preview_honors_master_switch_without_queued_commands(self):
+        from core.engine import Engine
+        engine = Engine.__new__(Engine)
+        engine.cfg = copy.deepcopy(DEFAULT_CONFIG)
+        device = Mock(haptic_supported=True)
+        device.set_haptic_level_immediate.return_value = True
+        engine.hook = SimpleNamespace(_hid_gesture=device)
+        with patch("core.engine.save_config") as save:
+            self.assertTrue(engine.preview_haptic_level(0))
+            device.set_haptic_level_immediate.assert_called_once_with(0, waveform_id=0)
+            engine.cfg["settings"]["haptic_enabled"] = False
+            engine.preview_haptic_level(1)
+            device.set_haptic_level_immediate.assert_called_with(1, waveform_id=None)
+            save.assert_not_called()
+        device.set_haptic_level.assert_not_called()
+        device.play_haptic_waveform.assert_not_called()
+
+    def test_dpi_hardware_write_does_not_replace_ui_preference_or_save_twice(self):
+        from core.engine import Engine
+        engine = Engine.__new__(Engine)
+        engine.cfg = copy.deepcopy(DEFAULT_CONFIG)
+        before = copy.deepcopy(engine.cfg)
+        device = Mock()
+        engine.hook = SimpleNamespace(_hid_gesture=device)
+        with patch.object(Engine, "_hid_runtime_state", return_value=SimpleNamespace(connected_device=None)), \
+             patch("core.engine.save_config") as save:
+            engine.set_dpi(2400, persist=False)
+            save.assert_not_called()
+        self.assertEqual(engine.cfg, before)
+        device.set_dpi.assert_called_once_with(2400)
+
+
 if __name__ == "__main__":
     unittest.main()
