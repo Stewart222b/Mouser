@@ -67,14 +67,14 @@ Item {
     Keys.onEnterPressed: triggerSelection()
     Keys.onSpacePressed: triggerSelection()
 
-    // ── Glow ring ─────────────────────────────────────────────
+    // Static outline makes the target visible on both metal and dark plastic.
     Rectangle {
         id: glow
-        visible: isSelected || hotspot.activeFocus
+        visible: isSelected || isHovered || hotspot.activeFocus
         x: cx - width / 2
         y: cy - height / 2
-        width: 30; height: 30; radius: 15
-        color: "transparent"
+        width: 32; height: 32; radius: 16
+        color: "#4d142033"
         border.width: isSelected || hotspot.activeFocus ? 2 : 1
         border.color: isSelected || hotspot.activeFocus
                       ? theme.accent
@@ -84,8 +84,6 @@ Item {
         Behavior on opacity { NumberAnimation { duration: 200 } }
         Behavior on border.width { NumberAnimation { duration: 150 } }
 
-        // Pulse animation when selected
-
     }
 
     // ── Dot ───────────────────────────────────────────────────
@@ -93,10 +91,11 @@ Item {
         id: dot
         x: cx - width / 2
         y: cy - height / 2
-        width: 12; height: 12; radius: 6
-        color: isSelected ? theme.accent : theme.textSecondary
-        border.width: 2
-        border.color: hotspot.activeFocus ? theme.textPrimary : Qt.rgba(0, 0, 0, 0.3)
+        objectName: "hotspotDot_" + hotspot.buttonKey
+        width: 18; height: 18; radius: 9
+        color: isSelected ? theme.accent : "#f6f8fc"
+        border.width: 3
+        border.color: "#26374a"
 
         scale: isHovered ? 1.2 : 1.0
         Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
@@ -106,9 +105,10 @@ Item {
     // ── Click area (larger than the dot for easier targeting) ─
     MouseArea {
         id: dotMa
-        x: cx - 18
-        y: cy - 18
-        width: 36; height: 36
+        objectName: "hotspotTarget_" + hotspot.buttonKey
+        x: cx - 22
+        y: cy - 22
+        width: 44; height: 44
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: hotspot.triggerSelection()

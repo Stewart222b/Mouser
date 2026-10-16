@@ -37,7 +37,11 @@ class LocalizationCoverageTests(unittest.TestCase):
             manager = LocaleManager(locale)
             for action in ACTIONS.values():
                 with self.subTest(locale=locale, action=action["label"]):
-                    self.assertRegex(manager.trAction(action["label"]), r"[\u3400-\u9fff]")
+                    translated = manager.trAction(action["label"])
+                    if action["label"] == "Actions Ring":
+                        self.assertEqual(translated, "Actions Ring")
+                    else:
+                        self.assertRegex(translated, r"[\u3400-\u9fff]")
                     self.assertRegex(manager.trCategory(action["category"]), r"[\u3400-\u9fff]")
 
     def test_every_configured_button_name_is_localized(self):
@@ -46,14 +50,31 @@ class LocalizationCoverageTests(unittest.TestCase):
             manager = LocaleManager(locale)
             for label in labels:
                 with self.subTest(locale=locale, button=label):
-                    self.assertRegex(manager.trButton(label), r"[\u3400-\u9fff]")
+                    translated = manager.trButton(label)
+                    if label == "Actions Ring":
+                        self.assertEqual(translated, "Actions Ring")
+                    else:
+                        self.assertRegex(translated, r"[\u3400-\u9fff]")
 
     def test_ring_short_labels_are_translated_except_brand_names(self):
         for locale in ("zh_CN", "zh_TW"):
             manager = LocaleManager(locale)
             for label in set(RING_LABEL_MAP.values()) - {"SmartShift"}:
                 with self.subTest(locale=locale, label=label):
-                    self.assertRegex(manager.trAction(label), r"[\u3400-\u9fff]")
+                    translated = manager.trAction(label)
+                    if translated != "Actions Ring":
+                        self.assertRegex(translated, r"[\u3400-\u9fff]")
+
+    def test_actions_ring_brand_is_preserved_without_rewriting_user_names(self):
+        for locale in ("zh_CN", "zh_TW"):
+            manager = LocaleManager(locale)
+            self.assertEqual(manager.strings["nav.actions_ring"], "Actions Ring")
+            self.assertEqual(manager.trAction("Actions Ring"), "Actions Ring")
+            self.assertEqual(manager.trAction("Ring"), "Actions Ring")
+            self.assertEqual(manager.trButton("Actions Ring"), "Actions Ring")
+            self.assertNotRegex(" ".join(manager.strings.values()), "动作环|動作環")
+            self.assertEqual(manager.trProfile("custom", "动作环"), "动作环")
+            self.assertEqual(manager.trAction("activate_actions_ring"), "activate_actions_ring")
 
     def test_default_profile_localization_preserves_user_names(self):
         manager = LocaleManager("zh_CN")

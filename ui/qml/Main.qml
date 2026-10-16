@@ -30,6 +30,7 @@ ApplicationWindow {
     property int currentPage: 0
     readonly property bool shortcutsBlocked: aboutDialog.visible
                                             || mousePageView.hasBlockingDialog
+                                            || (ringPageLoader.item && ringPageLoader.item["hasBlockingDialog"])
 
     property var navModel: {
         var items = [
@@ -97,6 +98,7 @@ ApplicationWindow {
                     model: root.navModel
                     Button {
                         id: navButton
+                        enabled: !root.shortcutsBlocked
                         required property var modelData
                         objectName: "navigation_" + modelData.page
                         Layout.fillWidth: true
@@ -135,6 +137,7 @@ ApplicationWindow {
                 Item { Layout.fillHeight: true }
                 Button {
                     id: appSettingsNav
+                    enabled: !root.shortcutsBlocked
                     objectName: "navigation_4"
                     Layout.fillWidth: true
                     implicitHeight: 42
@@ -160,6 +163,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     implicitHeight: 36
                     text: s["nav.about"]
+                    enabled: !root.shortcutsBlocked
                     font { family: uiState.fontFamily; pixelSize: 12 }
                     flat: true
                     onClicked: aboutDialog.open()
@@ -182,7 +186,7 @@ ApplicationWindow {
             MousePage { id: mousePageView }
             Loader { active: root.currentPage === 1 || item; source: "ScrollPage.qml" }
             Loader { active: (root.currentPage === 2 || item) && backend.hapticSupported; source: "HapticPage.qml" }
-            Loader { active: (root.currentPage === 3 || item) && backend.deviceHasActionsRing && backend.actionsRingActive; source: "ActionsRingConfig.qml" }
+            Loader { id: ringPageLoader; active: (root.currentPage === 3 || item) && backend.deviceHasActionsRing && backend.actionsRingActive; source: "ActionsRingConfig.qml" }
             Loader {
                 active: root.currentPage === 4 || item
                 sourceComponent: Component { ScrollPage { applicationSettings: true } }

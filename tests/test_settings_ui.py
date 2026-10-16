@@ -26,7 +26,7 @@ def probe():
     from types import SimpleNamespace
     from unittest.mock import Mock, patch
     sys.path.insert(0, str(ROOT))
-    from PySide6.QtCore import QObject, Property, QUrl, Qt, QMetaObject, Q_ARG
+    from PySide6.QtCore import QObject, Property, QUrl, Qt, QMetaObject, Q_ARG, QPointF
     from PySide6.QtGui import QPixmap, QFontDatabase, QColor, QPainter
     from PySide6.QtSvg import QSvgRenderer
     from PySide6.QtQuick import QQuickImageProvider, QQuickItem
@@ -84,12 +84,13 @@ def probe():
                                                      "mode_shift", "actions_ring", "hscroll_left", "hscroll_right"))
     fake = _FakeEngine(device_connected=True, connected_device=device, hid_features_ready=True)
     fake.haptic_supported = True
-    fake.smart_shift_force_supported = False
+    fake.smart_shift_supported = True
+    fake.smart_shift_force_supported = True
     fake.force_sensing_supported = True
     fake.force_sensing_range = (0, 255, 128)
     fake.cfg = cfg
     fake.enabled = True
-    for name in ("play_screen_switch_haptic", "reload_mappings", "set_haptic_level", "play_haptic_waveform"):
+    for name in ("play_screen_switch_haptic", "reload_mappings", "set_haptic_level", "play_haptic_waveform", "set_dpi", "set_smart_shift"):
         setattr(fake, name, Mock())
     lm = LocaleManager("zh_CN")
     with patch("ui.backend.load_config", return_value=cfg), patch("ui.backend.save_config") as save, \
@@ -130,7 +131,8 @@ def probe():
         def find(name):
             matches = [o for o in objects() if o.objectName() == name]
             assert matches, (name, [o.objectName() for o in objects() if o.objectName()])
-            return matches[-1]
+            visible_matches = [o for o in matches if o.property("visible")]
+            return (visible_matches or matches)[-1]
         def invoke(obj, method, value):
             assert QMetaObject.invokeMethod(obj, method, Q_ARG("QVariant", value)), method
             settle()
@@ -203,12 +205,112 @@ def probe():
         for lang in ("en", "zh_TW", "zh_CN"):
             lm.setLanguage(lang); settle()
             assert lm.trButton("Middle button") in [o.property("text") for o in objects()]
+        # Device settings retain keyboard/precise entry and change only their own values.
+        window.setProperty("currentPage", 1); settle()
+        device_before = copy.deepcopy(cfg)
+        dpi = find("dpiSetting_slider")
+        dpi.forceActiveFocus(); QTest.keyClick(window, Qt.Key.Key_Right); QTest.qWait(350); settle()
+        assert cfg["settings"]["dpi"] == device_before["settings"]["dpi"] + 50
+        precise = find("dpiSetting_value")
+        precise.setProperty("value", 1600); precise.valueModified.emit(); settle()
+        assert cfg["settings"]["dpi"] == 1600
+        toggle(find("invertHorizontalSwitch"))
+        assert cfg["settings"]["invert_hscroll"] != device_before["settings"]["invert_hscroll"]
+        toggle(find("invertHorizontalSwitch"))
+        toggle(find("smartShiftSwitch"))
+        assert cfg["settings"]["smart_shift_enabled"] != device_before["settings"]["smart_shift_enabled"]
+        toggle(find("smartShiftSwitch"))
+        device_changed = {key for key in cfg["settings"] if cfg["settings"][key] != device_before["settings"].get(key)}
+        assert device_changed == {"dpi"}, device_changed
+        assert cfg["profiles"] == device_before["profiles"]
+        # Ring preview directions match the controller's clockwise sector order.
+        window.setProperty("currentPage", 3); settle()
+        ring = next(o for o in objects() if o.metaObject().className().startswith("ActionsRingConfig"))
+        for direction, key in ((0, Qt.Key.Key_Up), (1, Qt.Key.Key_Right), (2, Qt.Key.Key_Down), (3, Qt.Key.Key_Left)):
+            find("ringSector_0").forceActiveFocus(); QTest.keyClick(window, key); settle()
+            assert ring.property("selectedSector") == direction
+        ring.setProperty("selectedSector", 2); settle()
+        profiles_before_ring = copy.deepcopy(cfg["profiles"])
+        copy_index = next(i for i, row in enumerate(backend.allActions) if row["id"] == "copy")
+        activate(find("ringActionCombo"), copy_index)
+        assert cfg["settings"]["actions_ring_slots"][2] == "copy"
+        assert cfg["profiles"] == profiles_before_ring
+        global_slots = copy.deepcopy(cfg["settings"]["actions_ring_slots"])
+        toggle(find("ringGlobalSwitch"))
+        profile_index = next(i for i, row in enumerate(backend.profiles) if row["name"] == "editor_test")
+        activate(find("ringProfileCombo"), profile_index)
+        ring.setProperty("selectedSector", 1); settle()
+        activate(find("ringActionCombo"), copy_index)
+        assert cfg["profiles"]["editor_test"]["mappings"]["actions_ring_slots"][1] == "copy"
+        assert cfg["settings"]["actions_ring_slots"] == global_slots
+        assert cfg["profiles"]["default"] == profiles_before_ring["default"]
+        ring_custom_index = next(i for i, row in enumerate(backend.allActions) if row["id"] == "__custom__")
+        activate(find("ringActionCombo"), ring_custom_index)
+        ring_dialog = find("ringShortcutCaptureDialog")
+        assert ring_dialog.property("visible") and window.property("shortcutsBlocked")
+        assert not find("navigation_0").property("enabled")
+        ring.setProperty("selectedSector", 3)
+        ring_dialog.captured.emit("ctrl+shift+k")
+        QMetaObject.invokeMethod(ring_dialog, "close"); settle()
+        assert cfg["profiles"]["editor_test"]["mappings"]["actions_ring_slots"][1] == "custom:ctrl+shift+k"
+        cancel_before = copy.deepcopy(cfg)
+        activate(find("ringActionCombo"), ring_custom_index)
+        ring_dialog.cancelled.emit(); QMetaObject.invokeMethod(ring_dialog, "close"); settle()
+        assert cfg == cancel_before and not window.property("shortcutsBlocked")
+        actual_action = backend.actionLabelFor(backend.actionsRingSlots[3])
+        assert find("ringActionCombo").property("displayText") == lm.trAction(actual_action)
+        assert find("ringActionCombo").property("currentIndex") != ring_custom_index
+        toggle(find("ringGlobalSwitch"))
+        hold = find("ringHoldSetting_slider")
+        hold.forceActiveFocus(); QTest.keyClick(window, Qt.Key.Key_Home); QTest.qWait(350)
+        QTest.keyClick(window, Qt.Key.Key_Right); QTest.qWait(350); settle()
+        assert cfg["settings"]["actions_ring_hold_ms"] == 110
+        backend.setActionsRingHoldMs(300)
+        # App preferences are separate from device settings and update actions are gated.
+        window.setProperty("currentPage", 4); settle()
+        app_before = copy.deepcopy(cfg)
+        toggle(find("startMinimizedSwitch")); toggle(find("startMinimizedSwitch"))
+        activate(find("appearanceCombo"), 2)
+        assert cfg["settings"]["appearance_mode"] == "dark"
+        activate(find("appearanceCombo"), 0)
+        assert cfg["settings"]["appearance_mode"] == "system"
+        activate(find("languageCombo"), 0)
+        assert cfg["settings"]["language"] == "en"
+        activate(find("languageCombo"), 1)
+        assert cfg["settings"]["language"] == "zh_CN"
+        assert cfg["profiles"] == app_before["profiles"]
+        assert cfg["settings"]["dpi"] == app_before["settings"]["dpi"]
+        cfg["settings"]["screenshot_directory"] = str(ROOT / "test-screenshots")
+        backend.settingsChanged.emit(); settle()
+        reset = find("resetScreenshotFolderButton")
+        assert reset.property("enabled")
+        reset.forceActiveFocus(); QTest.keyClick(window, Qt.Key.Key_Space); settle()
+        assert cfg["settings"]["screenshot_directory"] == ""
+        backend._latest_update_version = "9.9.9-test"
+        backend._setUpdateInstallState("downloading"); settle()
+        assert not find("checkUpdateButton").property("enabled")
+        assert find("cancelUpdateButton").property("visible")
+        backend._setUpdateInstallState("ready_to_install", "", True); settle()
+        assert find("installUpdateButton").property("visible") == backend.updateInstallEnabled
+        backend._latest_update_version = ""
+        backend._setUpdateInstallState("idle"); settle()
+        # The enlarged target accepts a click outside the old 36px square.
+        window.setProperty("currentPage", 0); settle()
+        assert find("hotspotDot_xbutton1").property("width") == 18
+        assert find("hotspotDot_xbutton1").property("color") == QColor("#f6f8fc")
+        target = find("hotspotTarget_xbutton1")
+        assert target.property("width") == 44
+        click_before = copy.deepcopy(cfg)
+        position = target.mapToScene(QPointF(42, 22)).toPoint()
+        QTest.mouseClick(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, position); settle()
+        assert mouse.property("selectedButton") == "xbutton1"
+        assert cfg == click_before
         capture = os.environ.get("MOUSER_UI_CAPTURE_DIR")
         if capture:
             output = Path(capture); output.mkdir(parents=True, exist_ok=True)
             haptic.setProperty("advancedExpanded", False)
             QTest.qWait(2100)
-            for page, name in ((0, "buttons"), (2, "haptics"), (4, "app-settings")):
+            for page, name in ((0, "buttons"), (1, "pointer-scroll"), (2, "haptics"), (3, "actions-ring"), (4, "app-settings")):
                 window.setProperty("currentPage", page); settle()
                 assert window.grabWindow().save(str(output / (name + ".png")))
         for width in (1040, 1240, 1500):
@@ -218,7 +320,9 @@ def probe():
             assert find("buttonEditor").property("width") >= 300
         assert not warnings, warnings
         print(json.dumps({"qml_warnings": warnings, "page_navigation": 5, "profile_isolation": True,
-                          "shared_haptic_controls": True, "opening_pages_preserves_config": True}))
+                          "shared_haptic_controls": True, "opening_pages_preserves_config": True,
+                          "pointer_and_app_preferences": True, "ring_scope_and_custom_shortcuts": True,
+                          "hotspot_outer_target_click": True}))
         window.deleteLater(); app.processEvents()
 
 

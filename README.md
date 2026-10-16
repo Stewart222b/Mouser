@@ -18,8 +18,8 @@
 | 前进／后退键震动 | 启用对应按键反馈后，按下即触发一次震动 | 两个侧键均已确认 |
 | 中键立即震动 | 普通按键反馈立即发送，消除等待 HID 读取队列导致的延迟 | 已确认按下即震动 |
 | 跨屏轻碰 | 光标进入另一块显示器时，触发一次轻碰波形 | 多屏切换和单下轻碰手感已确认 |
-| 中文界面 | 补齐震动选项、鼠标动作、动作环、DPI 档位与状态提示，支持即时切换简体／繁体中文 | 翻译覆盖与界面切换已自动检查 |
-| 设置界面 | 文字导航、同屏按键编辑、震动开关列表与独立应用设置，采用克制的灰蓝配色 | QML 交互、配置隔离及深浅色渲染已检查 |
+| 中文界面 | 补齐震动选项、鼠标动作、Actions Ring、DPI 档位与状态提示，支持即时切换简体／繁体中文 | 翻译覆盖与界面切换已自动检查 |
+| 设置界面 | 文字导航、同屏按键编辑、紧凑设置行与 Actions Ring 四向预览，热点更清晰易点 | QML 交互、配置隔离及深浅色渲染已检查 |
 
 表中按键与震动手感已在 MX Master 4 上实机确认；界面改动通过测试配置下的自动交互与渲染检查。自动检查覆盖输入、按键状态、震动触发条件、屏幕切换和更新流程；其他编辑器与设备的体验需要各自验证。
 
@@ -27,7 +27,7 @@
 
 ## 下载与运行
 
-目前独立维护版本为 **3.8.0**，尚未发布正式 Release。可从 [Master4 Windows 构建](https://github.com/Stewart222b/Mouser/actions/workflows/custom-windows.yml) 中选择成功的 `main` 构建，下载 **Mouser-Master4-Windows** Artifact。
+目前独立维护版本为 **3.8.1**，尚未发布正式 Release。可从 [Master4 Windows 构建](https://github.com/Stewart222b/Mouser/actions/workflows/custom-windows.yml) 中选择成功的 `main` 构建，下载 **Mouser-Master4-Windows** Artifact。
 
 解压 Artifact 内的 `Mouser-Windows.zip`，保留整个 `Mouser/` 目录，运行 `Mouser.exe`。后续正式版本会发布到[本项目 Releases](https://github.com/Stewart222b/Mouser/releases)，程序内更新检查也只指向本仓库。
 

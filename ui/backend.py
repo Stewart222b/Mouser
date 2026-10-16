@@ -2079,6 +2079,12 @@ class Backend(QObject):
     def actionLabelFor(self, actionId):
         return _action_label(actionId)
 
+    @Slot(str, result=str)
+    def ringActionLabelFor(self, actionId):
+        """Use the live overlay's compact labels in its settings preview."""
+        from ui.actions_ring_overlay import RING_LABEL_MAP
+        return RING_LABEL_MAP.get(actionId, _action_label(actionId))
+
     @Slot(int, int, str, result=str)
     def shortcutComboFromQtEvent(self, key, modifiers, text):
         return _qt_shortcut_combo(key, modifiers, text)
