@@ -38,6 +38,8 @@ _TRANSLATIONS = {
         "haptic.buttons_available": "Available",
         "haptic.buttons_empty": "No buttons selected. Pick from Available.",
         "haptic.dedup_title": "Prevent Duplicate Haptics",
+        "haptic.screen_switch_title": "Screen Switch Feedback",
+        "haptic.screen_switch_desc": "Play a short pulse when the cursor enters another screen. Rapid crossings are combined. Windows desktops only.",
         "haptic.dedup_desc": "When two haptic events fire close together, play only one pulse. Disable to allow both.",
         "haptic.experimental_note": "Haptic feedback support is experimental. Some settings may not take effect until the protocol is fully documented.",
 
@@ -314,6 +316,8 @@ _TRANSLATIONS = {
         "haptic.buttons_available": "\u53ef\u9009",
         "haptic.buttons_empty": "\u672a\u9009\u62e9\u4efb\u4f55\u6309\u952e\u3002\u8bf7\u4ece\u201c\u53ef\u9009\u201d\u4e2d\u6dfb\u52a0\u3002",
         "haptic.dedup_title": "\u9632\u6b62\u91cd\u590d\u89e6\u89c9",
+        "haptic.screen_switch_title": "跨屏震动",
+        "haptic.screen_switch_desc": "光标进入另一块屏幕时短震一次，快速往返会合并反馈。适用于 Windows 多屏桌面。",
         "haptic.dedup_desc": "\u5f53\u4e24\u4e2a\u89e6\u89c9\u4e8b\u4ef6\u77ed\u65f6\u95f4\u5185\u540c\u65f6\u89e6\u53d1\u65f6\uff0c\u4ec5\u64ad\u653e\u4e00\u6b21\u3002\u7981\u7528\u5219\u5141\u8bb8\u4e24\u6b21\u90fd\u89e6\u53d1\u3002",
         "haptic.experimental_note": "\u89e6\u89c9\u53cd\u9988\u652f\u6301\u4e3a\u5b9e\u9a8c\u6027\u529f\u80fd\u3002\u90e8\u5206\u8bbe\u7f6e\u53ef\u80fd\u5728\u534f\u8bae\u5b8c\u5168\u6587\u6863\u5316\u540e\u624d\u751f\u6548\u3002",
 
@@ -576,6 +580,8 @@ _TRANSLATIONS = {
         "haptic.buttons_available": "\u53ef\u9078",
         "haptic.buttons_empty": "\u672a\u9078\u64c7\u4efb\u4f55\u6309\u9375\u3002\u8acb\u5f9e\u300c\u53ef\u9078\u300d\u4e2d\u52a0\u5165\u3002",
         "haptic.dedup_title": "\u9632\u6b62\u91cd\u8907\u89f8\u89ba",
+        "haptic.screen_switch_title": "跨螢幕震動",
+        "haptic.screen_switch_desc": "游標進入另一個螢幕時短震一次，快速往返會合併回饋。適用於 Windows 多螢幕桌面。",
         "haptic.dedup_desc": "\u7576\u5169\u500b\u89f8\u89ba\u4e8b\u4ef6\u77ed\u6642\u9593\u5167\u540c\u6642\u89f8\u767c\u6642\uff0c\u50c5\u64ad\u653e\u4e00\u6b21\u3002\u505c\u7528\u5247\u5141\u8a31\u5169\u6b21\u90fd\u89f8\u767c\u3002",
         "haptic.experimental_note": "\u89f8\u89ba\u56de\u994b\u652f\u63f4\u70ba\u5be6\u9a57\u6027\u529f\u80fd\u3002\u90e8\u5206\u8a2d\u5b9a\u53ef\u80fd\u5728\u5354\u5b9a\u5b8c\u5168\u6587\u4ef6\u5316\u5f8c\u624d\u751f\u6548\u3002",
 

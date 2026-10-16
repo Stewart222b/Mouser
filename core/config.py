@@ -287,6 +287,7 @@ DEFAULT_CONFIG = {
         "action_haptic": [],        # action IDs that fire haptic on press; empty = opt-in
         "button_haptic": [],        # button keys that fire haptic on press; empty = opt-in
         "haptic_dedup": True,       # True = deduplicate pulses within 100ms window
+        "screen_switch_haptic": False,  # opt-in Windows display-crossing pulse
         "ignore_trackpad": True,
         "screenshot_directory": "",
         "wheel_divert": WHEEL_DIVERT_DEFAULT,

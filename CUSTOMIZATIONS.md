@@ -5,7 +5,7 @@
 ## 分支与版本
 
 - `main`：保留上游主分支代码，不加入本 fork 的功能改动；上游对应分支名为 `master`。
-- `custom`：基于上游 `v3.7.3`，维护定制功能。本地版本标识为 `3.7.3+ctrlclick.3`。
+- `custom`：基于上游 `v3.7.3`，维护定制功能。本地版本标识为 `3.7.3+ctrlclick.4`。
 - 不因创建 fork 自动发布二进制 Release。后续发布应使用带有定制标识的版本，明确对应的上游版本。
 
 仓库中的源码修改不会自动替换已安装的程序。上游更新也不会自动合并到 `custom`。
@@ -32,6 +32,18 @@
 
 ## 配置
 
+### 跨屏震动（Windows）
+
+`3.7.3+ctrlclick.4` 在「震动反馈」页增加「跨屏震动」开关。启用后，光标从一块显示器进入另一块时发送一次短震动，沿用当前全局震动强度；在同一块屏幕内移动不触发。它不依赖当前应用或按键映射，Mouser 隐藏到系统通知区后仍会运行。
+
+功能默认关闭，配置键为 `settings.screen_switch_haptic`。关闭此开关、关闭全局震动或断开鼠标会停止跨屏检测；暂停 Mouser 时不触发反馈，恢复后重新建立基准。
+
+实现使用 Qt 的 `QCursor.pos()` 和 `QGuiApplication.screenAt()`，每 25 ms 采样一次，统一使用 Qt 逻辑坐标处理缩放与负坐标。只对实际观察到的屏幕变化触发反馈，250 ms 内的快速往返最多触发一次，不补发被抑制的震动。首次采样、显示器连接／移除或布局变化只建立基准；落在没有屏幕的坐标区域时重建基准，避免误震。极快跨越后在两次采样之间返回原屏幕的移动可能不会被检测到。
+
+当前仅提供 Windows 开关，需要支持震动的已连接鼠标和至少两块扩展桌面的显示器；镜像显示不构成两个可切换的光标区域。此功能按桌面光标位置判断，不区分此次移动来自哪一个物理输入设备。Qt 接口参考：[screenAt](https://doc.qt.io/qt-6/qguiapplication.html#screenAt)、[高 DPI 坐标](https://doc.qt.io/qt-6/highdpi.html)。不新增依赖，不保存光标轨迹。
+
+### Ctrl＋左键应用配置
+
 新增动作默认不绑定任何应用，也不会修改默认配置、DPI、滚轮方向或其他个人偏好。可以直接在 Mouser 中选择应用配置，再为对应按键选择新动作。
 
 `examples/ide-apps.json` 是可选的通用模板，仅包含程序文件名和显示名称，不是个人配置快照。编辑器内的 coding agent 扩展随宿主编辑器匹配；独立桌面应用需要单独建立配置。应删去没有安装或不希望修改的条目。`ChatGPT.exe` 是部分 Codex 桌面发行版使用的进程名，也可能与其他桌面应用重名，应先核对实际进程。
@@ -57,7 +69,7 @@ Windows 使用 Python 3.12。`requirements-ctrlclick.txt` 将 Qt 固定到已验
 ```powershell
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements-ctrlclick.txt
-.venv\Scripts\python.exe -m unittest tests.test_ctrl_left_click tests.test_ctrl_click_profiles tests.test_mouse_mapping_haptics tests.test_engine tests.test_key_simulator tests.test_spec_coverage
+.venv\Scripts\python.exe -m unittest tests.test_ctrl_left_click tests.test_ctrl_click_profiles tests.test_mouse_mapping_haptics tests.test_screen_haptics tests.test_engine tests.test_key_simulator tests.test_spec_coverage
 .venv\Scripts\python.exe -m PyInstaller Mouser.spec --noconfirm
 ```
 

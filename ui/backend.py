@@ -74,6 +74,7 @@ from core.update_installer import (
     write_windows_update_plan,
 )
 from core.version import APP_VERSION
+from core.screen_haptics import ScreenTransitionTracker
 from ui.screenshot_common import screenshot_file_path, screenshot_file_paths, screenshots_dir
 
 
@@ -223,6 +224,19 @@ def _normalize_directory_path(path: str) -> str:
     return os.path.normpath(expanded)
 
 
+def _screen_haptic_snapshot():
+    """Use Qt logical coordinates for both the cursor and mixed-DPI screens."""
+    from PySide6.QtGui import QCursor, QGuiApplication
+
+    app = QGuiApplication.instance()
+    if not isinstance(app, QGuiApplication):
+        return None, ()
+    screens = app.screens()
+    layout = tuple((screen.name(), screen.geometry().getRect()) for screen in screens)
+    screen = app.screenAt(QCursor.pos())
+    return (screen.name() if screen is not None else None), layout
+
+
 class Backend(QObject):
     """QML-exposed backend that bridges the engine and configuration."""
 
@@ -321,6 +335,14 @@ class Backend(QObject):
         self._update_timer = QTimer(self)
         self._update_timer.setInterval(DEFAULT_AUTO_CHECK_INTERVAL_SECONDS * 1000)
         self._update_timer.timeout.connect(lambda: self._startUpdateCheck(manual=False))
+        self._screen_haptic_tracker = ScreenTransitionTracker()
+        self._screen_haptic_timer = QTimer(self)
+        self._screen_haptic_timer.setInterval(25)
+        self._screen_haptic_timer.setTimerType(Qt.PreciseTimer)
+        self._screen_haptic_timer.timeout.connect(self._pollScreenHaptic)
+        self.hapticChanged.connect(self._configureScreenHaptics)
+        self.hidFeaturesReadyChanged.connect(self._configureScreenHaptics)
+        self.mouseConnectedChanged.connect(self._configureScreenHaptics)
 
         # Lazily-computed list snapshots for QML bindings. Every read of a
         # ``@Property(list, ...)`` returns the cached value until the
@@ -371,6 +393,7 @@ class Backend(QObject):
         app = QCoreApplication.instance()
         if app is not None:
             app.aboutToQuit.connect(self.endShortcutCapture)
+            app.aboutToQuit.connect(self._screen_haptic_timer.stop)
 
         self._ring_overlay = None  # created lazily on first show
         self._ring_visible = False  # thread-safe flag (avoids Qt isVisible() off main thread)
@@ -437,6 +460,7 @@ class Backend(QObject):
         self._configureUpdateChecks()
         self._consumeUpdateResultMarker()
         self._cleanupStaleUpdatePreparation()
+        self._configureScreenHaptics()
 
     # ── Properties ─────────────────────────────────────────────
 
@@ -780,6 +804,38 @@ class Backend(QObject):
     @Property(bool, notify=hapticChanged)
     def hapticDedup(self):
         return bool(self._cfg.get("settings", {}).get("haptic_dedup", True))
+
+    @Property(bool, constant=True)
+    def screenSwitchHapticAvailable(self):
+        return sys.platform == "win32"
+
+    @Property(bool, notify=hapticChanged)
+    def screenSwitchHaptic(self):
+        return bool(self._cfg.get("settings", {}).get("screen_switch_haptic", False))
+
+    def _screenHapticsReady(self):
+        return (self.screenSwitchHapticAvailable and self.screenSwitchHaptic
+                and self.hapticEnabled and self._mouse_connected
+                and self._hid_features_ready and self.hapticSupported)
+
+    def _configureScreenHaptics(self):
+        self._screen_haptic_tracker.reset()
+        if self._screenHapticsReady():
+            self._screen_haptic_timer.start()
+        else:
+            self._screen_haptic_timer.stop()
+
+    def _pollScreenHaptic(self):
+        if not self._screenHapticsReady() or not self._engine.enabled:
+            self._screen_haptic_tracker.reset()
+            return
+        try:
+            screen, layout = _screen_haptic_snapshot()
+            if self._screen_haptic_tracker.observe(screen, layout, time.monotonic()):
+                self._engine.play_screen_switch_haptic()
+        except RuntimeError:
+            # Screen objects may disappear during a display topology change.
+            self._screen_haptic_tracker.reset()
 
     @Property(bool, notify=hapticChanged)
     def actionsRingHoverHaptic(self):
@@ -1773,6 +1829,14 @@ class Backend(QObject):
     def setHapticDedup(self, enabled):
         """Set whether overlapping haptic pulses are deduplicated."""
         self._cfg.setdefault("settings", {})["haptic_dedup"] = bool(enabled)
+        save_config(self._cfg)
+        if self._engine:
+            self._engine.cfg = self._cfg
+        self.hapticChanged.emit()
+
+    @Slot(bool)
+    def setScreenSwitchHaptic(self, enabled):
+        self._cfg.setdefault("settings", {})["screen_switch_haptic"] = bool(enabled)
         save_config(self._cfg)
         if self._engine:
             self._engine.cfg = self._cfg

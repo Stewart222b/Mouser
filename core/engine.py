@@ -1560,6 +1560,11 @@ class Engine:
             return hg.play_haptic_waveform(waveform_id)
         return False
 
+    def play_screen_switch_haptic(self):
+        """Short feedback for a desktop display transition, independent of mappings."""
+        if self._enabled and self.cfg.get("settings", {}).get("screen_switch_haptic", False):
+            self._play_haptic_async(1, immediate=True)
+
     def _play_haptic_async(self, waveform_id=0, immediate=False):
         """Queue a haptic pulse with minimal latency.
 

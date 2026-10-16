@@ -732,6 +732,55 @@ Item {
 
             Item { width: 1; height: 16 }
 
+            // Screen transition feedback (Windows desktop).
+            Rectangle {
+                visible: backend.screenSwitchHapticAvailable
+                opacity: backend.hapticEnabled ? 1.0 : 0.4
+                Behavior on opacity { NumberAnimation { duration: 150 } }
+                width: parent.width - 72
+                anchors.horizontalCenter: parent.horizontalCenter
+                height: visible ? screenSwitchContent.implicitHeight + 32 : 0
+                radius: Theme.radius
+                color: hapticPage.theme.bgCard
+                border.width: 1
+                border.color: hapticPage.theme.border
+
+                Column {
+                    id: screenSwitchContent
+                    anchors { left: parent.left; right: parent.right; top: parent.top; margins: 20 }
+                    spacing: 6
+
+                    Row {
+                        width: parent.width
+                        Text {
+                            text: s["haptic.screen_switch_title"] || "Screen Switch Feedback"
+                            font { family: uiState.fontFamily; pixelSize: 14; bold: true }
+                            color: hapticPage.theme.textPrimary
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - screenSwitchToggle.width
+                        }
+                        Switch {
+                            id: screenSwitchToggle
+                            objectName: "screenSwitchHapticToggle"
+                            checked: backend.screenSwitchHaptic
+                            enabled: backend.hapticEnabled
+                            anchors.verticalCenter: parent.verticalCenter
+                            onToggled: backend.setScreenSwitchHaptic(checked)
+                        }
+                    }
+                    Text {
+                        text: s["haptic.screen_switch_desc"]
+                              || "Play a short pulse when the cursor enters another screen. Rapid crossings are combined. Windows desktops only."
+                        font { family: uiState.fontFamily; pixelSize: 12 }
+                        color: hapticPage.theme.textSecondary
+                        wrapMode: Text.WordWrap
+                        width: parent.width
+                    }
+                }
+            }
+
+            Item { width: 1; height: backend.screenSwitchHapticAvailable ? 16 : 0 }
+
             // ── Dedup Toggle Card ────────────────────────────────────
             Rectangle {
                 id: dedupCard

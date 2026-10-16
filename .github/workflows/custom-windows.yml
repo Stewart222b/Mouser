@@ -24,7 +24,7 @@ jobs:
         run: >-
           python -m unittest
           tests.test_ctrl_left_click tests.test_ctrl_click_profiles
-          tests.test_mouse_mapping_haptics tests.test_engine
+          tests.test_mouse_mapping_haptics tests.test_screen_haptics tests.test_engine
           tests.test_key_simulator tests.test_spec_coverage
       - name: Build portable app
         run: python -m PyInstaller Mouser.spec --noconfirm
