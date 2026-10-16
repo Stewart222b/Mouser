@@ -8,6 +8,8 @@ Item {
     property var labels: []
     property var fullLabels: []
     readonly property var theme: Theme.palette(uiState.darkMode)
+    readonly property real outerRadius: Math.max(0, Math.min(220, width / 2 - 24, height / 2 - 24))
+    readonly property real labelRadius: outerRadius * 0.74
     readonly property var directions: [lm.strings["ui.ring_north"], lm.strings["ui.ring_east"],
                                        lm.strings["ui.ring_south"], lm.strings["ui.ring_west"]]
     signal sectorSelected(int index)
@@ -25,7 +27,7 @@ Item {
             var ctx = getContext("2d")
             ctx.clearRect(0, 0, width, height)
             var cx = width / 2, cy = height / 2
-            var outer = Math.min(146, width / 2 - 12, height / 2 - 12)
+            var outer = preview.outerRadius
             var inner = outer * 0.52
             for (var i = 0; i < 4; ++i) {
                 var start = (-135 + 90 * i + 2) * Math.PI / 180
@@ -59,8 +61,8 @@ Item {
             id: sectorButton
             required property int index
             objectName: "ringSector_" + index
-            x: preview.width / 2 + Math.sin(index * Math.PI / 2) * 108 - width / 2
-            y: preview.height / 2 - Math.cos(index * Math.PI / 2) * 108 - height / 2
+            x: preview.width / 2 + Math.sin(index * Math.PI / 2) * preview.labelRadius - width / 2
+            y: preview.height / 2 - Math.cos(index * Math.PI / 2) * preview.labelRadius - height / 2
             width: 138; height: 66
             checkable: true
             checked: preview.selectedSector === index

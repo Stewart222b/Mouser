@@ -48,9 +48,10 @@ Item {
         anchors.fill: parent
         clip: true
         contentWidth: availableWidth
-        Column {
-            x: 32
-            width: Math.max(0, Math.min(pageScroll.availableWidth - 64, 920))
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        SettingsContent {
+            objectName: "hapticSettingsContent"
+            viewportWidth: pageScroll.availableWidth
             spacing: 0
             Item { width: 1; height: 24 }
             RowLayout {

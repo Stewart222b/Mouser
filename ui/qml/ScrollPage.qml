@@ -63,9 +63,10 @@ Item {
         anchors.fill: parent
         clip: true
         contentWidth: availableWidth
-        Column {
-            x: 32
-            width: Math.max(0, Math.min(pageScroll.availableWidth - 64, 920))
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        SettingsContent {
+            objectName: scrollPage.applicationSettings ? "appSettingsContent" : "pointerSettingsContent"
+            viewportWidth: pageScroll.availableWidth
             Item { width: 1; height: 28 }
             Text {
                 text: scrollPage.applicationSettings ? s["ui.app_settings"] : s["ui.pointer_scroll"]

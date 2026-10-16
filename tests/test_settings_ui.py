@@ -305,13 +305,53 @@ def probe():
         QTest.mouseClick(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, position); settle()
         assert mouse.property("selectedButton") == "xbutton1"
         assert cfg == click_before
+        # Every settings page must follow maximize/restore, not stay pinned
+        # to the old 920px upper-left layout. Controls retain usable widths.
+        resize_before = copy.deepcopy(cfg)
+        content_names = {1: "pointerSettingsContent", 2: "hapticSettingsContent",
+                         3: "ringSettingsContent", 4: "appSettingsContent"}
+        ring_radii = []
+        for width, height in ((1040, 620), (1240, 800), (1920, 1080), (2560, 1440), (1240, 800)):
+            window.setWidth(width); window.setHeight(height); settle()
+            for page, content_name in content_names.items():
+                window.setProperty("currentPage", page); settle()
+                content = find(content_name)
+                viewport = content.property("viewportWidth")
+                assert abs(content.width() - min(viewport - 64, 1280)) < 1, (content_name, width, content.width())
+                assert abs(content.x() + content.width() / 2 - viewport / 2) < 1, (content_name, width, content.x())
+                if page == 1:
+                    assert find("dpiSetting_slider").width() <= 246
+                elif page == 3:
+                    ring = find("ringPreview")
+                    ring_radii.append(ring.property("outerRadius"))
+                    assert ring.height() > 350
+                    assert 299 <= find("ringActionCombo").width() <= 421
+                    for index in range(4):
+                        sector = find("ringSector_" + str(index))
+                        assert sector.x() >= 0 and sector.x() + sector.width() <= ring.width() + 1
+                        assert sector.y() >= 0 and sector.y() + sector.height() <= ring.height() + 1
+                elif page == 4:
+                    assert find("appearanceCombo").width() <= 181
+        assert ring_radii[2] > ring_radii[1] > ring_radii[0], ring_radii
+        assert abs(ring_radii[-1] - ring_radii[1]) < 1, ring_radii
+        assert cfg == resize_before, "Maximize and restore must not write preferences"
+        window.setWidth(int(os.environ.get("MOUSER_UI_CAPTURE_WIDTH", "1240")))
+        window.setHeight(int(os.environ.get("MOUSER_UI_CAPTURE_HEIGHT", "800"))); settle()
         capture = os.environ.get("MOUSER_UI_CAPTURE_DIR")
         if capture:
             output = Path(capture); output.mkdir(parents=True, exist_ok=True)
             haptic.setProperty("advancedExpanded", False)
             QTest.qWait(2100)
             for page, name in ((0, "buttons"), (1, "pointer-scroll"), (2, "haptics"), (3, "actions-ring"), (4, "app-settings")):
-                window.setProperty("currentPage", page); settle()
+                invoke(window, "openPage", page)
+                if page in content_names:
+                    # Earlier keyboard edits may have scrolled the page.
+                    # Capture the top of each view, rather than that test state.
+                    scroller = find(content_names[page]).parentItem()
+                    while scroller is not None and scroller.property("contentY") is None:
+                        scroller = scroller.parentItem()
+                    assert scroller is not None
+                    scroller.setProperty("contentY", 0); settle()
                 assert window.grabWindow().save(str(output / (name + ".png")))
         for width in (1040, 1240, 1500):
             window.setWidth(width); settle()
@@ -322,7 +362,7 @@ def probe():
         print(json.dumps({"qml_warnings": warnings, "page_navigation": 5, "profile_isolation": True,
                           "shared_haptic_controls": True, "opening_pages_preserves_config": True,
                           "pointer_and_app_preferences": True, "ring_scope_and_custom_shortcuts": True,
-                          "hotspot_outer_target_click": True}))
+                          "hotspot_outer_target_click": True, "wide_layout_and_restore": True}))
         window.deleteLater(); app.processEvents()
 
 

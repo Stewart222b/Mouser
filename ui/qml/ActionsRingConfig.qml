@@ -37,9 +37,10 @@ Item {
         anchors.fill: parent
         clip: true
         contentWidth: availableWidth
-        Column {
-            x: 32
-            width: Math.max(0, Math.min(pageScroll.availableWidth - 64, 920))
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        SettingsContent {
+            objectName: "ringSettingsContent"
+            viewportWidth: pageScroll.availableWidth
             Item { width: 1; height: 28 }
             Text {
                 text: "Actions Ring"
@@ -99,14 +100,17 @@ Item {
                 onValueEdited: function(value) { backend.setActionsRingHoldMs(Math.round(value)) }
             }
             RowLayout {
+                objectName: "ringWorkbench"
                 width: parent.width
-                height: 374
+                height: Math.max(374, Math.min(540, width * 0.45, actionsRingConfig.height - 280))
                 spacing: 24
                 RingPreview {
                     objectName: "ringPreview"
                     Layout.fillWidth: true
                     Layout.minimumWidth: 320
+                    Layout.preferredWidth: 560
                     Layout.preferredHeight: 360
+                    Layout.fillHeight: true
                     selectedSector: actionsRingConfig.selectedSector
                     labels: {
                         var strings = lm.strings
@@ -131,9 +135,12 @@ Item {
                     color: actionsRingConfig.theme.border
                 }
                 ColumnLayout {
-                    Layout.preferredWidth: 300
-                    Layout.alignment: Qt.AlignTop
-                    Layout.topMargin: 62
+                    Layout.fillWidth: true
+                    Layout.fillHeight: false
+                    Layout.minimumWidth: 300
+                    Layout.preferredWidth: 360
+                    Layout.maximumWidth: 420
+                    Layout.alignment: Qt.AlignVCenter
                     spacing: 12
                     Text {
                         text: actionsRingConfig.directions[actionsRingConfig.selectedSector]

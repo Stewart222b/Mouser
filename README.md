@@ -27,7 +27,7 @@
 
 ## 下载与运行
 
-目前独立维护版本为 **3.8.1**，尚未发布正式 Release。可从 [Master4 Windows 构建](https://github.com/Stewart222b/Mouser/actions/workflows/custom-windows.yml) 中选择成功的 `main` 构建，下载 **Mouser-Master4-Windows** Artifact。
+目前独立维护版本为 **3.8.2**，尚未发布正式 Release。可从 [Master4 Windows 构建](https://github.com/Stewart222b/Mouser/actions/workflows/custom-windows.yml) 中选择成功的 `main` 构建，下载 **Mouser-Master4-Windows** Artifact。
 
 解压 Artifact 内的 `Mouser-Windows.zip`，保留整个 `Mouser/` 目录，运行 `Mouser.exe`。后续正式版本会发布到[本项目 Releases](https://github.com/Stewart222b/Mouser/releases)，程序内更新检查也只指向本仓库。
 
