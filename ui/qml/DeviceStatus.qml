@@ -30,7 +30,7 @@ Item {
             return s["device.bolt"];
         if (transport === "usb receiver" || transport === "unifying")
             return s["device.usb_receiver"];
-        return connectionType.trim() || s["device.connection_unknown"];
+        return s["device.connection_unknown"];
     }
     readonly property string batteryLabel: {
         var label = batteryKnown ? s["device.battery_remaining"].replace("{percent}", batteryLevel) : s["device.battery_unknown"];

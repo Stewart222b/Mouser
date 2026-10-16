@@ -224,6 +224,8 @@ def probe():
             assert find("deviceBatteryText").property("text") == "95%"
             assert abs(find("deviceBatteryFill").width() - 15.2) < 0.01
             assert status.property("connectionLabel")
+            if icon == "link":
+                assert status.property("connectionLabel") == lm.strings["device.connection_unknown"]
         backend._connected_device_transport = "Bluetooth"
         backend.deviceInfoChanged.emit()
         backend._handleBatteryChange(61, True); settle()
