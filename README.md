@@ -27,11 +27,13 @@
 
 ## 下载与运行
 
-目前独立维护版本为 **3.8.6**，尚未发布正式 Release。可从 [Master4 Windows 构建](https://github.com/Stewart222b/Mouser/actions/workflows/custom-windows.yml) 中选择成功的 `main` 构建，下载 **Mouser-Master4-Windows** Artifact。
+当前正式版本为 **3.8.6 · Windows x64**。在 [v3.8.6 Release](https://github.com/Stewart222b/Mouser/releases/tag/v3.8.6) 下载 [Mouser-Windows.zip](https://github.com/Stewart222b/Mouser/releases/download/v3.8.6/Mouser-Windows.zip)。
 
-解压 Artifact 内的 `Mouser-Windows.zip`，保留整个 `Mouser/` 目录，运行 `Mouser.exe`。后续正式版本会发布到[本项目 Releases](https://github.com/Stewart222b/Mouser/releases)，程序内更新检查也只指向本仓库。
+升级前退出 Mouser，将压缩包解压到新目录，保留完整的 `Mouser/` 文件夹并运行其中的 `Mouser.exe`。已有配置保留在用户应用数据目录。`SHA256SUMS.txt` 提供文件校验值。
 
-升级前退出正在运行的 Mouser。Logi Options+ 与 Mouser 同时控制同一设备可能冲突，应避免同时运行。
+正式版本见[本项目 Releases](https://github.com/Stewart222b/Mouser/releases)。[Master4 Windows 构建](https://github.com/Stewart222b/Mouser/actions/workflows/custom-windows.yml) 中的 Artifact 用于获取尚未正式发布的构建。程序内更新检查指向本仓库。
+
+Logi Options+ 与 Mouser 同时控制同一设备可能冲突，应避免同时运行。
 
 ## 常用设置
 
