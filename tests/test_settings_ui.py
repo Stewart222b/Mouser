@@ -161,9 +161,10 @@ def probe():
         invoke(mouse, "selectButton", "middle")
         combo = find("buttonActionCombo")
         actions = mouse.property("availableButtonActions").toVariant()
-        idx = next(i for i, row in enumerate(actions) if row["id"] == "ctrl_left_click")
+        action_id = "ctrl_left_click" if sys.platform == "win32" else "copy"
+        idx = next(i for i, row in enumerate(actions) if row["id"] == action_id)
         activate(combo, idx)
-        assert cfg["profiles"]["default"]["mappings"]["middle"] == "ctrl_left_click"
+        assert cfg["profiles"]["default"]["mappings"]["middle"] == action_id
         assert cfg["profiles"]["editor_test"] == before["profiles"]["editor_test"]
         custom_idx = next(i for i, row in enumerate(actions) if row["id"] == "__custom__")
         activate(combo, custom_idx)
@@ -177,7 +178,7 @@ def probe():
         assert find("gestureButtonEditor").property("visible")
         backend.setProfileMapping("default", "middle", "cycle_dpi"); settle()
         assert find("dpiPresetEditor").property("visible")
-        backend.setProfileMapping("default", "middle", "ctrl_left_click"); settle()
+        backend.setProfileMapping("default", "middle", action_id); settle()
         toggle(find("selectedButtonHapticSwitch"))
         expected_middle = "middle" in cfg["settings"]["button_haptic"]
         window.setProperty("currentPage", 2); settle()
