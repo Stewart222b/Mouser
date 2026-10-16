@@ -209,6 +209,62 @@ def probe():
         assert cfg == before, "Opening pages must not write settings"
         save.assert_not_called(); core_save.assert_not_called()
         assert not haptic_events, "Opening settings must not play a preview"
+        # Device status belongs to the persistent sidebar. Hardware reports
+        # update it without saving preferences or borrowing a page's state.
+        status = find("sidebarDeviceStatus")
+        transport_before = backend._connected_device_transport
+        connected_before = backend._mouse_connected
+        battery_before = (backend.batteryLevel, backend.batteryCharging)
+        for transport, icon in (("Bluetooth", "bluetooth"), ("Logi Bolt", "usb-receiver"),
+                                ("USB Receiver", "usb-receiver"), ("evdev", "link"), ("", "link")):
+            backend._connected_device_transport = transport
+            backend.deviceInfoChanged.emit()
+            backend._handleBatteryChange(95, False); settle()
+            assert find("deviceConnectionIcon").property("name") == icon
+            assert find("deviceBatteryText").property("text") == "95%"
+            assert abs(find("deviceBatteryFill").width() - 15.2) < 0.01
+            assert status.property("connectionLabel")
+        backend._connected_device_transport = "Bluetooth"
+        backend.deviceInfoChanged.emit()
+        backend._handleBatteryChange(61, True); settle()
+        assert find("deviceConnectionIcon").property("name") == "bluetooth"
+        assert find("deviceChargingIcon").property("visible")
+        assert not find("deviceBatteryFill").property("visible")
+        assert lm.strings["device.charging"] in status.property("batteryLabel")
+        assert cfg == before
+        save.assert_not_called(); core_save.assert_not_called()
+        for lang in ("en", "zh_TW", "zh_CN"):
+            lm.setLanguage(lang)
+            backend._handleBatteryChange(8, False); settle()
+            assert lm.strings["device.low_battery"] in find("deviceBatteryText").property("text")
+            assert status.property("lowBattery")
+            assert status.property("implicitWidth") <= status.width() + 1
+        localization_saves = save.call_count
+        for level in (-1, 120):
+            backend._handleBatteryChange(level, False); settle()
+            assert find("deviceBatteryText").property("text") == "—"
+            assert not find("deviceBatteryFill").property("visible")
+            assert lm.strings["device.battery_unknown"] == status.property("batteryLabel")
+        backend._mouse_connected = False
+        backend.mouseConnectedChanged.emit(); settle()
+        assert find("deviceDisconnectedText").property("visible")
+        assert not find("deviceBatteryIndicator").property("visible")
+        assert not find("deviceConnectionIndicator").property("visible")
+        backend._mouse_connected = connected_before
+        backend._connected_device_transport = transport_before
+        backend.mouseConnectedChanged.emit()
+        backend.deviceInfoChanged.emit()
+        backend._handleBatteryChange(*battery_before); settle()
+        assert cfg == before
+        assert save.call_count == localization_saves
+        core_save.assert_not_called()
+        for page in (0, 1, 2, 3, 4, 0):
+            window.setProperty("currentPage", page); settle()
+            assert status.property("visible")
+        label_x = find("navigationLabel_0").mapToScene(QPointF()).x()
+        for name in ("navigationLabel_4", "aboutNavigationLabel"):
+            position_x = find(name).mapToScene(QPointF()).x()
+            assert abs(position_x - label_x) < 1, (name, position_x, label_x)
         window.setProperty("currentPage", 1); settle()
         def visible(name): return any(o.property("visible") for o in window.findChildren(QObject) if o.objectName() == name)
         assert visible("pointerSettingsSection") and not visible("appearanceSettingsSection")
@@ -470,6 +526,9 @@ def probe():
         capture = os.environ.get("MOUSER_UI_CAPTURE_DIR")
         if capture:
             output = Path(capture); output.mkdir(parents=True, exist_ok=True)
+            backend._connected_device_transport = "Bluetooth"
+            backend.deviceInfoChanged.emit()
+            backend._handleBatteryChange(95, False)
             haptic.setProperty("advancedExpanded", False)
             QTest.qWait(2100)
             for page, name in ((0, "buttons"), (1, "pointer-scroll"), (2, "haptics"), (3, "actions-ring"), (4, "app-settings")):
@@ -494,7 +553,8 @@ def probe():
                           "pointer_and_app_preferences": True, "ring_scope_and_custom_shortcuts": True,
                           "hotspot_outer_target_click": True, "wide_layout_and_restore": True,
                           "haptic_selection_preview": True, "all_slider_release_commits": True,
-                          "wheel_and_force_gui_responsive_during_hardware_wait": True}))
+                          "wheel_and_force_gui_responsive_during_hardware_wait": True,
+                          "global_device_status_states_and_sidebar_alignment": True}))
         window.deleteLater(); app.processEvents()
 
 

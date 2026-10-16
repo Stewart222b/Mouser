@@ -85,14 +85,30 @@ ApplicationWindow {
                         color: root.theme.textPrimary
                     }
                 }
-                Text {
+                ColumnLayout {
                     Layout.leftMargin: 12
-                    Layout.bottomMargin: 26
+                    Layout.bottomMargin: 20
                     Layout.fillWidth: true
-                    text: backend.mouseConnected ? backend.deviceDisplayName : s["ui.no_mouse"]
-                    font { family: uiState.fontFamily; pixelSize: 12 }
-                    color: root.theme.textSecondary
-                    elide: Text.ElideRight
+                    spacing: 3
+                    Text {
+                        objectName: "sidebarDeviceName"
+                        Layout.fillWidth: true
+                        text: backend.mouseConnected ? backend.deviceDisplayName : root.s["device.mouse"]
+                        font { family: uiState.fontFamily; pixelSize: 12 }
+                        color: root.theme.textSecondary
+                        elide: Text.ElideRight
+                    }
+                    DeviceStatus {
+                        objectName: "sidebarDeviceStatus"
+                        Layout.fillWidth: true
+                        connected: backend.mouseConnected
+                        connectionType: backend.connectionType
+                        batteryLevel: backend.batteryLevel
+                        charging: backend.batteryCharging
+                        theme: root.theme
+                        s: root.s
+                        fontFamily: uiState.fontFamily
+                    }
                 }
                 Repeater {
                     model: root.navModel
@@ -103,6 +119,8 @@ ApplicationWindow {
                         objectName: "navigation_" + modelData.page
                         Layout.fillWidth: true
                         implicitHeight: 42
+                        leftPadding: 12
+                        rightPadding: 12
                         hoverEnabled: true
                         Accessible.name: lm.strings[modelData.tipKey]
                         Accessible.role: Accessible.PageTab
@@ -125,6 +143,7 @@ ApplicationWindow {
                             spacing: 11
                             AppIcon { name: navButton.modelData.icon; Layout.preferredWidth: 18; Layout.preferredHeight: 18; iconColor: root.theme.textPrimary }
                             Text {
+                                objectName: "navigationLabel_" + navButton.modelData.page
                                 Layout.fillWidth: true
                                 text: lm.strings[navButton.modelData.tipKey]
                                 color: root.theme.textPrimary
@@ -141,10 +160,24 @@ ApplicationWindow {
                     objectName: "navigation_4"
                     Layout.fillWidth: true
                     implicitHeight: 42
+                    leftPadding: 12
+                    rightPadding: 12
                     text: s["ui.app_settings"]
                     font { family: uiState.fontFamily; pixelSize: 14 }
                     flat: true
                     onClicked: root.openPage(4)
+                    contentItem: RowLayout {
+                        spacing: 11
+                        AppIcon { name: "gear"; Layout.preferredWidth: 18; Layout.preferredHeight: 18; iconColor: root.theme.textPrimary }
+                        Text {
+                            objectName: "navigationLabel_4"
+                            Layout.fillWidth: true
+                            text: appSettingsNav.text
+                            color: root.theme.textPrimary
+                            font: appSettingsNav.font
+                            elide: Text.ElideRight
+                        }
+                    }
                     background: Rectangle {
                         radius: 4
                         color: root.currentPage === 4 ? root.theme.accentDim
@@ -160,13 +193,35 @@ ApplicationWindow {
                     }
                 }
                 Button {
+                    id: aboutNav
+                    objectName: "aboutNavigation"
                     Layout.fillWidth: true
-                    implicitHeight: 36
+                    implicitHeight: 42
+                    leftPadding: 12
+                    rightPadding: 12
                     text: s["nav.about"]
                     enabled: !root.shortcutsBlocked
-                    font { family: uiState.fontFamily; pixelSize: 12 }
+                    font { family: uiState.fontFamily; pixelSize: 14 }
                     flat: true
                     onClicked: aboutDialog.open()
+                    contentItem: RowLayout {
+                        spacing: 11
+                        AppIcon { name: "info"; Layout.preferredWidth: 18; Layout.preferredHeight: 18; iconColor: root.theme.textPrimary }
+                        Text {
+                            objectName: "aboutNavigationLabel"
+                            Layout.fillWidth: true
+                            text: aboutNav.text
+                            color: root.theme.textPrimary
+                            font: aboutNav.font
+                            elide: Text.ElideRight
+                        }
+                    }
+                    background: Rectangle {
+                        radius: 4
+                        color: aboutNav.hovered ? root.theme.bgCardHover : "transparent"
+                        border.width: aboutNav.activeFocus ? 1 : 0
+                        border.color: root.theme.accent
+                    }
                 }
                 Text {
                     Layout.leftMargin: 12

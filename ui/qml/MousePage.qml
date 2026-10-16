@@ -576,18 +576,6 @@ Item {
                 color: theme.textPrimary
                 Layout.fillWidth: true
             }
-            Text {
-                text: {
-                    var strings = lm.strings
-                    if (!backend.mouseConnected) return strings["ui.no_mouse"]
-                    var parts = [backend.deviceDisplayName]
-                    if (backend.connectionType) parts.push(lm.trStatus(backend.connectionType))
-                    if (backend.batteryLevel >= 0) parts.push(backend.batteryLevel + "%")
-                    return parts.join("  ·  ")
-                }
-                font { family: uiState.fontFamily; pixelSize: 12 }
-                color: theme.textSecondary
-            }
         }
         RowLayout {
             Layout.fillWidth: true
