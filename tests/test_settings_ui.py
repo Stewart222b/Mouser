@@ -92,6 +92,12 @@ def probe():
     fake.enabled = True
     for name in ("play_screen_switch_haptic", "reload_mappings", "set_haptic_level", "play_haptic_waveform", "set_dpi", "set_smart_shift"):
         setattr(fake, name, Mock())
+    haptic_events = []
+    def apply_haptic(level):
+        haptic_events.append(("apply", level))
+        return True
+    fake.set_haptic_level.side_effect = apply_haptic
+    fake.play_haptic_waveform.side_effect = lambda waveform: haptic_events.append(("preview", cfg["settings"]["haptic_level"]))
     lm = LocaleManager("zh_CN")
     with patch("ui.backend.load_config", return_value=cfg), patch("ui.backend.save_config") as save, \
          patch("core.config.save_config") as core_save, \
@@ -154,6 +160,7 @@ def probe():
             window.setProperty("currentPage", page); settle()
         assert cfg == before, "Opening pages must not write settings"
         save.assert_not_called(); core_save.assert_not_called()
+        assert not haptic_events, "Opening settings must not play a preview"
         window.setProperty("currentPage", 1); settle()
         def visible(name): return any(o.property("visible") for o in window.findChildren(QObject) if o.objectName() == name)
         assert visible("pointerSettingsSection") and not visible("appearanceSettingsSection")
@@ -190,9 +197,30 @@ def probe():
         assert [r["key"] for r in backend.hapticButtonRows] == keys_before
         assert ("middle" in cfg["settings"]["button_haptic"]) != expected_middle
         assert not any(r["key"].startswith("hscroll") for r in backend.hapticButtonRows)
+        level_before = cfg["settings"]["haptic_level"]
+        for level in (0, 1, 2, 3, 3, level_before):
+            radio = find("hapticLevel_" + str(level))
+            position = radio.mapToScene(QPointF(radio.width() / 2, radio.height() / 2)).toPoint()
+            count = len(haptic_events)
+            QTest.mouseClick(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, position); settle()
+            assert cfg["settings"]["haptic_level"] == level
+            assert haptic_events[count:] == [("apply", level), ("preview", level)]
+        radio = find("hapticLevel_0")
+        radio.forceActiveFocus(); QTest.keyClick(window, Qt.Key.Key_Space); settle()
+        assert haptic_events[-2:] == [("apply", 0), ("preview", 0)]
+        radio = find("hapticLevel_" + str(level_before))
+        radio.forceActiveFocus(); QTest.keyClick(window, Qt.Key.Key_Space); settle()
+        assert cfg["settings"]["haptic_level"] == level_before
+        assert not any(o.objectName() == "hapticTestButton" for o in objects())
         toggle(find("hapticEnableSwitch"))
         assert not find("buttonHaptic_middle").property("enabled")
-        assert not find("hapticTestButton").property("enabled")
+        assert all(not find("hapticLevel_" + str(level)).property("enabled") for level in range(4))
+        count = len(haptic_events)
+        radio = find("hapticLevel_0")
+        position = radio.mapToScene(QPointF(radio.width() / 2, radio.height() / 2)).toPoint()
+        QTest.mouseClick(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, position); settle()
+        assert len(haptic_events) == count
+        assert cfg["settings"]["haptic_level"] == level_before
         toggle(find("hapticEnableSwitch"))
         haptic = next(o for o in window.findChildren(QObject) if o.metaObject().className().startswith("HapticPage"))
         haptic.setProperty("advancedExpanded", True); settle()
@@ -362,7 +390,8 @@ def probe():
         print(json.dumps({"qml_warnings": warnings, "page_navigation": 5, "profile_isolation": True,
                           "shared_haptic_controls": True, "opening_pages_preserves_config": True,
                           "pointer_and_app_preferences": True, "ring_scope_and_custom_shortcuts": True,
-                          "hotspot_outer_target_click": True, "wide_layout_and_restore": True}))
+                          "hotspot_outer_target_click": True, "wide_layout_and_restore": True,
+                          "haptic_selection_preview": True}))
         window.deleteLater(); app.processEvents()
 
 

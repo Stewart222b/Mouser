@@ -6,7 +6,7 @@ import tempfile
 import unittest
 import unittest.mock
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, call, patch
 
 from core.config import DEFAULT_CONFIG
 from core.updater import UpdateCheckState
@@ -111,6 +111,53 @@ class BackendDeviceLayoutTests(unittest.TestCase):
 
         self.assertEqual(backend.effectiveDeviceLayoutKey, "generic_mouse")
         self.assertFalse(backend.hasInteractiveDeviceLayout)
+
+    def _haptic_backend_with_deferred_workers(self):
+        engine = _FakeEngine()
+        engine.haptic_supported = True
+        engine.set_haptic_level = Mock(return_value=True)
+        engine.play_haptic_waveform = Mock()
+        backend = self._make_backend(engine=engine)
+        workers = []
+        def make_thread(*, target, name, daemon):
+            return SimpleNamespace(start=lambda: workers.append(target))
+        return backend, engine, workers, make_thread
+
+    def test_haptic_selection_applies_level_before_preview_and_can_repeat(self):
+        backend, engine, workers, make_thread = self._haptic_backend_with_deferred_workers()
+        operations = Mock()
+        operations.attach_mock(engine.set_haptic_level, "apply")
+        operations.attach_mock(engine.play_haptic_waveform, "preview")
+        with patch("ui.backend.save_config"), patch("ui.backend.threading.Thread", side_effect=make_thread):
+            for level in (0, 1, 2, 3, 3):
+                backend.setHapticLevel(level)
+                self.assertEqual(backend.hapticLevel, level)
+                workers.pop(0)()
+                self.assertEqual(operations.mock_calls[-2:], [call.apply(level), call.preview(0)])
+        self.assertEqual(engine.play_haptic_waveform.call_count, 5)
+
+    def test_haptic_preview_requires_applied_enabled_supported_device(self):
+        for applied, enabled, supported in ((False, True, True), (True, False, True), (True, True, False)):
+            with self.subTest(applied=applied, enabled=enabled, supported=supported):
+                backend, engine, workers, make_thread = self._haptic_backend_with_deferred_workers()
+                engine.set_haptic_level.return_value = applied
+                engine.haptic_supported = supported
+                backend._cfg["settings"]["haptic_enabled"] = enabled
+                with patch("ui.backend.save_config"), patch("ui.backend.threading.Thread", side_effect=make_thread):
+                    backend.setHapticLevel(0)
+                    workers.pop(0)()
+                engine.play_haptic_waveform.assert_not_called()
+
+    def test_haptic_selection_ignores_outdated_workers(self):
+        backend, engine, workers, make_thread = self._haptic_backend_with_deferred_workers()
+        with patch("ui.backend.save_config"), patch("ui.backend.threading.Thread", side_effect=make_thread):
+            backend.setHapticLevel(3)
+            backend.setHapticLevel(0)
+            workers[1]()
+            workers[0]()
+        engine.set_haptic_level.assert_called_once_with(0)
+        engine.play_haptic_waveform.assert_called_once_with(0)
+        self.assertEqual(backend.hapticLevel, 0)
 
     def test_device_image_source_uses_encoded_file_url(self):
         backend = self._make_backend(root_dir="/tmp/Mouser Build")

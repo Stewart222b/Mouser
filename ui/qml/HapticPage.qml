@@ -80,18 +80,13 @@ Item {
                     model: hapticPage.hapticLevels
                     RadioButton {
                         required property var modelData
+                        objectName: "hapticLevel_" + modelData.value
                         text: modelData.label
                         checked: backend.hapticLevel === modelData.value
                         ButtonGroup.group: levelGroup
                         font { family: uiState.fontFamily; pixelSize: 13 }
                         onClicked: backend.setHapticLevel(modelData.value)
                     }
-                }
-                Button {
-                    objectName: "hapticTestButton"
-                    text: s["ui.try_haptic"]
-                    flat: true
-                    onClicked: backend.playHapticTest()
                 }
             }
             Item { width: 1; height: 25 }

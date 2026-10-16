@@ -307,6 +307,8 @@ class Backend(QObject):
             self._cfg.get("settings", {}).get("debug_mode", False)
         )
         self._record_mode = False
+        self._haptic_level_lock = threading.Lock()
+        self._haptic_level_request = 0
         self._gesture_records = []
         self._gesture_active = False
         self._gesture_move_seen = False
@@ -1797,14 +1799,25 @@ class Backend(QObject):
 
     @Slot(int)
     def setHapticLevel(self, level):
+        """Save a user-selected level and preview it after the device applies it."""
         level = max(0, min(3, int(level)))
         self._cfg.setdefault("settings", {})["haptic_level"] = level
         save_config(self._cfg)
         self.hapticChanged.emit()
+        self._haptic_level_request += 1
+        request = self._haptic_level_request
         if self._engine:
-            import threading
+            self._engine.cfg = self._cfg
+            def apply_and_preview():
+                with self._haptic_level_lock:
+                    if request != self._haptic_level_request:
+                        return
+                    applied = self._engine.set_haptic_level(level)
+                    if (applied and request == self._haptic_level_request
+                            and self.hapticEnabled and self.hapticSupported):
+                        self._engine.play_haptic_waveform(0)
             threading.Thread(
-                target=lambda: self._engine.set_haptic_level(level),
+                target=apply_and_preview,
                 daemon=True, name="SetHapticLevel"
             ).start()
 
