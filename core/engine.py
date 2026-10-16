@@ -385,7 +385,7 @@ class Engine:
                     elif is_mouse_button_action(action_id):
                         if has_up:
                             # Button has a matching _up event → split press/release
-                            self.hook.register(evt_type, self._make_mouse_down_handler(action_id))
+                            self.hook.register(evt_type, self._make_mouse_down_handler(action_id, btn_key))
                         else:
                             # Single-fire event (gesture, swipe) → full click
                             self.hook.register(evt_type, self._make_handler(action_id, btn_key))
@@ -526,7 +526,7 @@ class Engine:
                 import traceback; traceback.print_exc()
         return handler
 
-    def _make_mouse_down_handler(self, action_id):
+    def _make_mouse_down_handler(self, action_id, btn_key=""):
         def _safety_release():
             """Auto-release if the UP event never fires."""
             try:
@@ -544,6 +544,11 @@ class Engine:
                         f"Mapped {event.event_type} -> {action_id} (mouse down)"
                     )
                     inject_mouse_down(action_id)
+                    if (action_haptic_enabled(self.cfg, action_id)
+                            or button_haptic_enabled(self.cfg, btn_key)):
+                        # OS button callbacks do not wake the HID reader; send
+                        # immediately rather than waiting for its next report.
+                        self._play_haptic_async(1, immediate=True)
                     # Safety: auto-release after 20s if UP event is never received
                     old = self._mouse_release_timers.pop(action_id, None)
                     if old is not None:

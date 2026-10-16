@@ -1765,6 +1765,8 @@ class Backend(QObject):
         self._cfg = set_button_haptic(self._cfg, button_key, bool(enabled))
         if self._engine:
             self._engine.cfg = self._cfg
+            # Pass-through buttons need an observer registered when enabled.
+            self._engine.reload_mappings()
         self.hapticChanged.emit()
 
     @Slot(bool)
