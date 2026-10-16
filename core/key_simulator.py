@@ -400,6 +400,62 @@ if sys.platform == "win32":
     def send_key_press(vk):
         send_key_combo([vk])
 
+    _ctrl_click_lock = threading.Lock()
+
+    def _key_is_down(vk):
+        get_state = ctypes.windll.user32.GetAsyncKeyState
+        get_state.argtypes = [ctypes.c_int]
+        get_state.restype = ctypes.c_short
+        return bool(get_state(vk) & 0x8000)
+
+    def send_ctrl_left_click():
+        """One Ctrl+click at the pointer, preserving an already held Ctrl.
+
+        Keep the chord in one SendInput batch so user input cannot interleave.
+        Only release inputs owned by this action after partial injection.
+        """
+        with _ctrl_click_lock:
+            if _key_is_down(0x01):  # VK_LBUTTON: do not interrupt a drag.
+                print("[KeySimulator] Ctrl+click skipped: left button is held")
+                return False
+            owns_ctrl = not _key_is_down(VK_CONTROL)
+            events = []
+            if owns_ctrl:
+                events.append(_make_key_input(VK_CONTROL))
+            events.extend((
+                _make_mouse_input(MOUSEEVENTF_LEFTDOWN),
+                _make_mouse_input(MOUSEEVENTF_LEFTUP),
+            ))
+            if owns_ctrl:
+                events.append(_make_key_input(VK_CONTROL, KEYEVENTF_KEYUP))
+            sent = None
+            attempted = False
+            try:
+                batch = (INPUT * len(events))(*events)
+                attempted = True
+                sent = SendInput(len(events), batch, sizeof(INPUT))
+                if sent != len(events):
+                    raise RuntimeError(f"SendInput accepted {sent}/{len(events)} Ctrl+click events")
+                return True
+            except Exception as exc:
+                print(f"[KeySimulator] Ctrl+click failed: {exc}")
+                if attempted:
+                    cleanup = []
+                    mouse_down_index = 1 if owns_ctrl else 0
+                    if sent is None or sent == mouse_down_index + 1:
+                        cleanup.append(_make_mouse_input(MOUSEEVENTF_LEFTUP))
+                    if owns_ctrl and (sent is None or 0 < sent < len(events)):
+                        cleanup.append(_make_key_input(VK_CONTROL, KEYEVENTF_KEYUP))
+                    if cleanup:
+                        try:
+                            batch = (INPUT * len(cleanup))(*cleanup)
+                            released = SendInput(len(cleanup), batch, sizeof(INPUT))
+                            if released != len(cleanup):
+                                print("[KeySimulator] Ctrl+click cleanup was blocked")
+                        except Exception as release_exc:
+                            print(f"[KeySimulator] Ctrl+click cleanup failed: {release_exc}")
+                return False
+
     def _send_phased_alt_arrow(arrow_vk, hold_ms=50):
         # Some Chromium-based browsers silently drop batched VK-only SendInput chords;
         # phased modifier-down → key-tap → modifier-up with pauses is accepted reliably.
@@ -606,6 +662,11 @@ if sys.platform == "win32":
             "keys": [],
             "category": "Mouse",
         },
+        "ctrl_left_click": {
+            "label": "Ctrl + Left Click / Ctrl + 左键点击",
+            "keys": [],
+            "category": "Mouse",
+        },
         "mouse_right_click": {
             "label": "Right Click",
             "keys": [],
@@ -677,6 +738,8 @@ if sys.platform == "win32":
     def execute_action(action_id):
         try:
             print(f"[KeySimulator] execute_action({action_id})")
+            if action_id == "ctrl_left_click":
+                return send_ctrl_left_click()
             if action_id.startswith("custom:"):
                 keys = _parse_custom_combo(action_id, _KEY_NAME_TO_CODE)
                 if keys:
