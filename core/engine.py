@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 from core.mouse_hook import MouseHook, MouseEvent
+from core.screen_haptics import SCREEN_SWITCH_HAPTIC_WAVEFORM
 from core.key_simulator import (
     ACTIONS, execute_action, is_mouse_button_action,
     inject_mouse_down, inject_mouse_up,
@@ -1563,7 +1564,7 @@ class Engine:
     def play_screen_switch_haptic(self):
         """Short feedback for a desktop display transition, independent of mappings."""
         if self._enabled and self.cfg.get("settings", {}).get("screen_switch_haptic", False):
-            self._play_haptic_async(1, immediate=True)
+            self._play_haptic_async(SCREEN_SWITCH_HAPTIC_WAVEFORM, immediate=True)
 
     def _play_haptic_async(self, waveform_id=0, immediate=False):
         """Queue a haptic pulse with minimal latency.

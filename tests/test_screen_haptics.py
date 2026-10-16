@@ -65,7 +65,7 @@ class ScreenHapticEngineTests(unittest.TestCase):
     def test_screen_feedback_uses_immediate_device_write(self):
         engine = self.make_engine()
         engine.play_screen_switch_haptic()
-        engine.hook._hid_gesture.play_haptic_immediate.assert_called_once_with(1)
+        engine.hook._hid_gesture.play_haptic_immediate.assert_called_once_with(4)
         engine.hook._hid_gesture.queue_haptic_waveform.assert_not_called()
 
     def test_off_paused_and_unsupported_devices_stay_silent(self):

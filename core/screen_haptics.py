@@ -1,5 +1,9 @@
 """Track display transitions without retaining cursor coordinates."""
 
+# HID++ 0x19B0 SUBTLE_COLLISION: a light boundary cue, separate from clicks.
+# Waveform names: pwr-Solaar/Solaar, hidpp20_constants.HapticWaveForms.
+SCREEN_SWITCH_HAPTIC_WAVEFORM = 0x04
+
 
 class ScreenTransitionTracker:
     """Pulse on an observed display change, with a short anti-chatter window."""
