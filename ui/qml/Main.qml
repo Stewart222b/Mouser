@@ -483,7 +483,7 @@ ApplicationWindow {
                                 Text {
                                     id: buildModeChipLabel
                                     anchors.centerIn: parent
-                                    text: appBuildMode
+                                    text: (lm.strings, lm.trStatus(appBuildMode))
                                     font { family: uiState.fontFamily; pixelSize: 11; bold: true }
                                     color: root.theme.textPrimary
                                 }
@@ -531,7 +531,7 @@ ApplicationWindow {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 18
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: appBuildMode
+                                text: (lm.strings, lm.trStatus(appBuildMode))
                                 font { family: uiState.fontFamily; pixelSize: 14 }
                                 color: theme.textPrimary
                             }
@@ -702,6 +702,6 @@ ApplicationWindow {
 
     Connections {
         target: backend
-        function onStatusMessage(msg) { toast.show(msg) }
+        function onStatusMessage(msg) { toast.show(lm.trStatus(msg)) }
     }
 }

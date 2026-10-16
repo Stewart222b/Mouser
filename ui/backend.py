@@ -282,11 +282,14 @@ class Backend(QObject):
     _hideRingRequest = Signal()
     _superKeyHeldRequest = Signal(bool)
 
-    def __init__(self, engine=None, parent=None, root_dir=None):
+    def __init__(self, engine=None, parent=None, root_dir=None, locale_manager=None):
         super().__init__(parent)
         self._engine = engine
         self._root_dir = root_dir or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self._cfg = load_config()
+        self._locale_manager = locale_manager
+        if locale_manager is not None:
+            locale_manager.languageChanged.connect(self._saveLanguage)
         self._mouse_connected = False
         self._device_display_name = "Logitech mouse"
         self._connected_device_key = ""
@@ -2297,6 +2300,23 @@ class Backend(QObject):
         if overlay and self._ring_visible:
             overlay.accumulate_rawxy(dx, dy)
 
+    @Slot()
+    def _saveLanguage(self):
+        manager = getattr(self, "_locale_manager", None)
+        if manager is None:
+            return
+        settings = self._cfg.setdefault("settings", {})
+        previous = settings.get("language")
+        settings["language"] = manager.language
+        try:
+            save_config(self._cfg)
+        except Exception:
+            if previous is None:
+                settings.pop("language", None)
+            else:
+                settings["language"] = previous
+            self.statusMessage.emit("Could not save display language")
+
     def _getRingCurrentSector(self):
         """Called from hook thread at button-up — reads Python attr, not Qt C++."""
         overlay = self._ring_overlay
@@ -2315,6 +2335,9 @@ class Backend(QObject):
             self._ring_overlay.cancelled.connect(self._onRingCancelled)
             self._ring_overlay.sector_changed.connect(self._onRingSectorChanged)
         pos = QCursor.pos()
+        manager = getattr(self, "_locale_manager", None)
+        if manager is not None:
+            labels = [manager.trAction(label) for label in labels]
         self._ring_overlay.show_ring(pos.x(), pos.y(), labels, interactive=interactive)
         self._ring_visible = True
 

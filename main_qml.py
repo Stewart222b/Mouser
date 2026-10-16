@@ -1081,7 +1081,7 @@ def main():
 
     _t7 = _time.perf_counter()
     # ── QML Backend ────────────────────────────────────────────
-    backend = Backend(engine, root_dir=ROOT)
+    backend = Backend(engine, root_dir=ROOT, locale_manager=locale_mgr)
     ui_state.appearanceMode = backend.appearanceMode
     backend.settingsChanged.connect(
         lambda: setattr(ui_state, "appearanceMode", backend.appearanceMode)
@@ -1302,17 +1302,7 @@ def main():
             locale_mgr.tr("tray.disable_remapping") if engine.enabled
             else locale_mgr.tr("tray.enable_remapping"))
 
-    def _save_language():
-        """Persist the selected language to config.json."""
-        try:
-            saved_cfg = load_config()
-            saved_cfg.setdefault("settings", {})["language"] = locale_mgr.language
-            save_config(saved_cfg)
-        except Exception as exc:
-            print(f"[Mouser] Failed to save language preference: {exc}")
-
     locale_mgr.languageChanged.connect(_update_tray_texts)
-    locale_mgr.languageChanged.connect(_save_language)
 
     backend.updateAvailable.connect(lambda version, url: tray.showMessage(
         "Mouser",

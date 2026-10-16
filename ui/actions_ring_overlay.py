@@ -53,6 +53,7 @@ RING_LABEL_MAP: dict[str, str] = {
     "toggle_smart_shift":   "SmartShift",
     "switch_scroll_mode":   "Scroll Mode",
     "activate_actions_ring":"Actions Ring",
+    "ctrl_left_click":      "Ctrl+Click",
     "mouse_left_click":     "Left Click",
     "mouse_right_click":    "Right Click",
     "mouse_middle_click":   "Middle Click",

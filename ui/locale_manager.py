@@ -817,6 +817,41 @@ _TRANSLATIONS = {
     },
 }
 
+
+# Interface additions shared by all supported locales.
+_EXTRA_STRINGS = {
+    "haptic.enabled": ["Enable Haptic Feedback", "启用震动反馈", "啟用震動回饋"],
+    "haptic.force_title": ["Gesture Button Sensitivity", "手势键按压力度", "手勢鍵按壓力度"],
+    "haptic.force_desc": ["Adjust how hard you need to press the gesture button to activate it.", "调整触发手势键所需的按压力度。", "調整觸發手勢鍵所需的按壓力度。"],
+    "haptic.force_light": ["Light", "轻", "輕"],
+    "haptic.force_low": ["Low", "较轻", "較輕"],
+    "haptic.force_medium": ["Medium", "适中", "適中"],
+    "haptic.force_firm": ["Firm", "较重", "較重"],
+    "haptic.force_warning": ["A lighter setting may cause accidental activations during normal use.", "力度过轻可能在正常使用时误触发。", "力度過輕可能在正常使用時誤觸發。"],
+    "haptic.ring_hover_title": ["Actions Ring Slot Feedback", "动作环选项震动反馈", "動作環選項震動回饋"],
+    "haptic.ring_hover_desc": ["Play a pulse when the highlighted Actions Ring slot changes.", "动作环中高亮的选项发生变化时，触发一次震动。", "動作環中反白的選項變更時，觸發一次震動。"],
+    "mouse.copy_device_info": ["Copy device info", "复制设备信息", "複製裝置資訊"],
+    "mouse.device_info_copied": ["Device info copied to clipboard.", "设备信息已复制到剪贴板。", "裝置資訊已複製到剪貼簿。"],
+    "mouse.gesture": ["Gesture", "手势", "手勢"],
+    "mouse.gesture_swipe": ["Gesture Swipe", "按住并滑动", "按住並滑動"],
+    "mouse.no_device_connected": ["No device connected", "未连接设备", "未連接裝置"],
+    "mouse.remove": ["Remove", "移除", "移除"],
+    "mouse.share_device_details": ["Help us support your mouse", "帮助改进设备支持", "協助改善裝置支援"],
+    "ring.scope_app": ["App", "应用", "應用程式"],
+    "ring.scope_global_desc": ["All apps share one set of ring actions.", "所有应用共用一组动作环设置。", "所有應用程式共用一組動作環設定。"],
+    "ring.scope_perapp_desc": ["Each app has its own ring actions. Pick an app below to edit its ring.", "为不同应用分别设置动作环。选择下方的应用进行编辑。", "為不同應用程式分別設定動作環。選擇下方的應用程式進行編輯。"],
+    "ring.scope_title": ["Same ring for every app", "所有应用共用动作环", "所有應用程式共用動作環"],
+    "mouse.dpi_presets": ["DPI PRESETS", "DPI 档位", "DPI 檔位"],
+    "mouse.dpi_slot": ["Slot {slot}: {dpi} DPI", "档位 {slot}：{dpi} DPI", "檔位 {slot}：{dpi} DPI"],
+    "mouse.dpi_cycle_hint": ["Press the button to cycle: {values}", "按下按键依次切换：{values}", "按下按鍵依序切換：{values}"],
+    "mouse.source": ["Source: ", "来源：", "來源："],
+    "mouse.not_available": ["n/a", "不可用", "無法使用"],
+    "mouse.default_profile": ["Default (All Apps)", "默认（所有应用）", "預設（所有應用程式）"],
+}
+for _key, _values in _EXTRA_STRINGS.items():
+    for _index, _locale in enumerate(("en", "zh_CN", "zh_TW")):
+        _TRANSLATIONS[_locale][_key] = _values[_index]
+
 AVAILABLE_LANGUAGES = [
     {"code": "en",    "name": "English"},
     {"code": "zh_CN", "name": "\u7b80\u4f53\u4e2d\u6587"},
@@ -1065,6 +1100,135 @@ _ACTION_TR: dict[str, dict[str, str]] = {
 }
 
 
+# Labels supplied by the input engine are translated only for display.
+_ACTION_ADDITIONS = {
+    "Cycle DPI Presets": ["循环切换 DPI 档位", "循環切換 DPI 檔位"],
+    "Actions Ring": ["动作环", "動作環"],
+    "Left Click": ["左键单击", "左鍵點擊"],
+    "Ctrl + Left Click": ["Ctrl＋左键点击", "Ctrl＋左鍵點擊"],
+    "Ctrl + Left Click / Ctrl + 左键点击": ["Ctrl＋左键点击", "Ctrl＋左鍵點擊"],
+    "Right Click": ["右键单击", "右鍵點擊"],
+    "Middle Click": ["中键单击", "中鍵點擊"],
+    "Back (Mouse Button 4)": ["后退（鼠标按键 4）", "後退（滑鼠按鍵 4）"],
+    "Forward (Mouse Button 5)": ["前进（鼠标按键 5）", "前進（滑鼠按鍵 5）"],
+    "Do Nothing": ["无操作", "無操作"],
+    "Gesture Swipe": ["按住并滑动", "按住並滑動"],
+    "Task View": ["任务视图", "工作檢視"],
+    "Screenshot": ["截图", "截圖"],
+    "Prev Track": ["上一首", "上一首"],
+    "Mute": ["静音", "靜音"],
+    "Back": ["后退", "後退"],
+    "Forward": ["前进", "前進"],
+    "Copy": ["复制", "複製"],
+    "Paste": ["粘贴", "貼上"],
+    "Cut": ["剪切", "剪下"],
+    "Undo": ["撤销", "復原"],
+    "Select All": ["全选", "全選"],
+    "Save": ["保存", "儲存"],
+    "Find": ["查找", "尋找"],
+    "Next Tab": ["下一个标签页", "下一個分頁"],
+    "Prev Tab": ["上一个标签页", "上一個分頁"],
+    "Close Tab": ["关闭标签页", "關閉分頁"],
+    "New Tab": ["新建标签页", "新增分頁"],
+    "Desk Left": ["左侧桌面", "左側桌面"],
+    "Desk Right": ["右侧桌面", "右側桌面"],
+    "Switch App": ["切换应用", "切換應用程式"],
+    "Switch Back": ["反向切换应用", "反向切換應用程式"],
+    "Cycle DPI": ["切换 DPI 档位", "切換 DPI 檔位"],
+    "Scroll Mode": ["滚轮模式", "滾輪模式"],
+    "None": ["无", "無"],
+    "Desktops": ["切换桌面", "切換桌面"],
+    "Ctrl+Click": ["Ctrl＋左击", "Ctrl＋左擊"],
+}
+_BUTTON_ADDITIONS = {
+    "DPI switch button": ["DPI 切换键", "DPI 切換鍵"],
+    "Left button": ["左键", "左鍵"],
+    "Right button": ["右键", "右鍵"],
+    "Gesture tap": ["手势键单击", "手勢鍵點擊"],
+    "Gesture swipe left": ["手势键左滑", "手勢鍵左滑"],
+    "Gesture swipe right": ["手势键右滑", "手勢鍵右滑"],
+    "Gesture swipe up": ["手势键上滑", "手勢鍵上滑"],
+    "Gesture swipe down": ["手势键下滑", "手勢鍵下滑"],
+    "Actions Ring tap": ["动作环单击", "動作環點擊"],
+    "Actions Ring swipe left": ["动作环左滑", "動作環左滑"],
+    "Actions Ring swipe right": ["动作环右滑", "動作環右滑"],
+    "Actions Ring swipe up": ["动作环上滑", "動作環上滑"],
+    "Actions Ring swipe down": ["动作环下滑", "動作環下滑"],
+    "Back tap": ["后退键单击", "後退鍵點擊"],
+    "Back swipe left": ["后退键左滑", "後退鍵左滑"],
+    "Back swipe right": ["后退键右滑", "後退鍵右滑"],
+    "Back swipe up": ["后退键上滑", "後退鍵上滑"],
+    "Back swipe down": ["后退键下滑", "後退鍵下滑"],
+    "Forward tap": ["前进键单击", "前進鍵點擊"],
+    "Forward swipe left": ["前进键左滑", "前進鍵左滑"],
+    "Forward swipe right": ["前进键右滑", "前進鍵右滑"],
+    "Forward swipe up": ["前进键上滑", "前進鍵上滑"],
+    "Forward swipe down": ["前进键下滑", "前進鍵下滑"],
+    "Middle tap": ["中键单击", "中鍵點擊"],
+    "Middle swipe left": ["中键左滑", "中鍵左滑"],
+    "Middle swipe right": ["中键右滑", "中鍵右滑"],
+    "Middle swipe up": ["中键上滑", "中鍵上滑"],
+    "Middle swipe down": ["中键下滑", "中鍵下滑"],
+    "Mode shift tap": ["模式切换键单击", "模式切換鍵點擊"],
+    "Mode shift swipe left": ["模式切换键左滑", "模式切換鍵左滑"],
+    "Mode shift swipe right": ["模式切换键右滑", "模式切換鍵右滑"],
+    "Mode shift swipe up": ["模式切换键上滑", "模式切換鍵上滑"],
+    "Mode shift swipe down": ["模式切换键下滑", "模式切換鍵下滑"],
+}
+_STATUS_TEXT = {
+    "Start at login could not be enabled. Please try again.": ["无法启用登录时启动，请重试。", "無法啟用登入時啟動，請重試。"],
+    "Firmware wheel invert FAILED on a capable device -- falling back to OS-level inversion.": ["设备滚轮反向设置失败，已改用系统级反向滚动。", "裝置滾輪反向設定失敗，已改用系統層級反向捲動。"],
+    "Mouse reconnected, but saved device settings could not be restored yet.": ["鼠标已重新连接，但已保存的设备设置暂未恢复。", "滑鼠已重新連接，但已儲存的裝置設定暫未還原。"],
+    "Saved": ["已保存", "已儲存"],
+    "Update check already running": ["正在检查更新，请稍候", "正在檢查更新，請稍候"],
+    "Checking for updates...": ["正在检查更新…", "正在檢查更新…"],
+    "Mouser is up to date": ["Mouser 已是最新版本", "Mouser 已是最新版本"],
+    "Could not check for updates": ["检查更新失败", "檢查更新失敗"],
+    "Update installed": ["更新已安装", "更新已安裝"],
+    "Choose a valid screenshot folder": ["请选择有效的截图文件夹", "請選擇有效的截圖資料夾"],
+    "Update is already in progress": ["正在更新，请稍候", "正在更新，請稍候"],
+    "Open the release page to install manually": ["请打开发布页面手动安装", "請開啟發佈頁面手動安裝"],
+    "Update is not ready to install": ["更新尚未准备好，暂时无法安装", "更新尚未準備好，暫時無法安裝"],
+    "Start at login is not available on this platform": ["当前平台不支持登录时启动", "目前平台不支援登入時啟動"],
+    "Start-at-login state is inconsistent; please restart Mouser to recover.": ["登录启动状态不一致，请重启 Mouser 恢复。", "登入啟動狀態不一致，請重新啟動 Mouser 復原。"],
+    "Start at login enabled": ["已启用登录时启动", "已啟用登入時啟動"],
+    "Start at login disabled": ["已关闭登录时启动", "已停用登入時啟動"],
+    "Profile already exists": ["该配置已存在", "此設定檔已存在"],
+    "Profile created": ["配置已创建", "設定檔已建立"],
+    "Profile deleted": ["配置已删除", "設定檔已刪除"],
+    "Connect a device first": ["请先连接设备", "請先連接裝置"],
+    "Unknown layout option": ["未知的布局选项", "未知的版面選項"],
+    "Experimental layout applied": ["已应用实验性布局", "已套用實驗性版面"],
+    "Layout reset to auto-detect": ["布局已恢复自动识别", "版面已恢復自動偵測"],
+    "Device info copied to clipboard": ["设备信息已复制到剪贴板", "裝置資訊已複製到剪貼簿"],
+    "No device connected": ["未连接设备", "未連接裝置"],
+    "Finish the current screenshot selection first": ["请先完成当前截图选区", "請先完成目前的截圖選取範圍"],
+    "Finish the current screenshot first": ["请先完成当前截图", "請先完成目前的截圖"],
+    "Screenshot cancelled": ["已取消截图", "已取消截圖"],
+    "Screenshot copied to clipboard": ["截图已复制到剪贴板", "截圖已複製到剪貼簿"],
+    "Screenshot backend unavailable": ["截图功能暂不可用", "截圖功能暫時無法使用"],
+    "Using startup fallback to replay saved device settings": ["正在恢复已保存的设备设置", "正在還原已儲存的裝置設定"],
+    "Could not save display language": ["显示语言保存失败", "顯示語言儲存失敗"],
+    "Bluetooth": ["蓝牙", "藍牙"],
+    "packaged": ["打包版", "封裝版"],
+    "source": ["源码运行", "原始碼執行"],
+    "Idle": ["空闲", "閒置"],
+}
+_STATUS_PREFIXES = {
+    "Screenshot saved to ": ["截图已保存至 ", "截圖已儲存至 "],
+    "Screenshot failed: ": ["截图失败：", "截圖失敗："],
+    "Failed to update login item: ": ["更新登录启动项失败：", "更新登入啟動項失敗："],
+    "Failed to save login item setting: ": ["保存登录启动设置失败：", "儲存登入啟動設定失敗："],
+    "Updated to ": ["已更新至 ", "已更新至 "],
+    "Profile: ": ["当前配置：", "目前設定檔："],
+}
+
+for _index, _locale in enumerate(("zh_CN", "zh_TW")):
+    _ACTION_TR[_locale].update({key: value[_index] for key, value in _ACTION_ADDITIONS.items()})
+    _BUTTON_TR[_locale].update({key: value[_index] for key, value in _BUTTON_ADDITIONS.items()})
+    _CATEGORY_TR[_locale]["Mouse"] = ("鼠标", "滑鼠")[_index]
+
+
 class LocaleManager(QObject):
     """Manages the active UI language and exposes translations to QML."""
 
@@ -1117,6 +1281,33 @@ class LocaleManager(QObject):
     def trCategory(self, english_cat: str) -> str:
         """Translate an action category (e.g. 'Browser' → '浏览器')."""
         return _CATEGORY_TR.get(self._language, {}).get(english_cat, english_cat)
+
+
+    @Slot(str, str, result=str)
+    def trProfile(self, name: str, label: str) -> str:
+        """Translate the built-in default label without renaming saved profiles."""
+        if name == "default" and label == "Default (All Apps)":
+            return self.tr("mouse.default_profile")
+        return label
+
+    @Slot(str, result=str)
+    def trStatus(self, message: str) -> str:
+        """Localize display messages while preserving paths, versions and error details."""
+        if self._language == "en":
+            return message
+        index = 0 if self._language == "zh_CN" else 1
+        if message in _STATUS_TEXT:
+            return _STATUS_TEXT[message][index]
+        if message.startswith("Mouser ") and message.endswith(" is available"):
+            version = message[len("Mouser "):-len(" is available")]
+            return ("发现 Mouser 新版本：", "發現 Mouser 新版本：")[index] + version
+        for prefix, translated in _STATUS_PREFIXES.items():
+            if message.startswith(prefix):
+                value = message[len(prefix):]
+                if prefix == "Profile: " and value == "default":
+                    value = self.tr("mouse.default_profile")
+                return translated[index] + value
+        return message
 
     # ── available languages list ──────────────────────────────────
     @Property(list, constant=True)

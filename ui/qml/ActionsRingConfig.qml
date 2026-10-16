@@ -300,6 +300,15 @@ Item {
                             width: parent.width - 60
                             model: backend.profiles
                             textRole: "label"
+                            displayText: currentIndex >= 0 && currentIndex < backend.profiles.length
+                                         ? (lm.strings, lm.trProfile(backend.profiles[currentIndex].name,
+                                                                    backend.profiles[currentIndex].label)) : ""
+                            delegate: ItemDelegate {
+                                width: ringProfileCombo.width
+                                text: (lm.strings, lm.trProfile(modelData.name, modelData.label))
+                                highlighted: ringProfileCombo.highlightedIndex === index
+                                font.family: uiState.fontFamily
+                            }
                             Material.accent: actionsRingConfig.theme.accent
                             font { family: uiState.fontFamily; pixelSize: 11 }
                             currentIndex: {

@@ -663,7 +663,7 @@ if sys.platform == "win32":
             "category": "Mouse",
         },
         "ctrl_left_click": {
-            "label": "Ctrl + Left Click / Ctrl + 左键点击",
+            "label": "Ctrl + Left Click",
             "keys": [],
             "category": "Mouse",
         },

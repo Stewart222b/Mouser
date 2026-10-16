@@ -411,7 +411,7 @@ Item {
         var mapping = mappingFor(key)
         if (mapping) {
             selectedButton = key
-            selectedButtonName = lm.trButton(mapping.name)
+            selectedButtonName = mapping.name
             selectedActionId = mapping.actionId
         }
     }
@@ -424,7 +424,7 @@ Item {
             return
         }
         selectedButton = "hscroll_left"
-        selectedButtonName = s["mouse.horizontal_scroll"] || "Horizontal Scroll"
+        selectedButtonName = "Horizontal Scroll"
         var mapping = mappingFor("hscroll_left")
         selectedActionId = mapping ? mapping.actionId : "none"
     }
@@ -633,7 +633,7 @@ Item {
                                 spacing: 2
 
                                 Text {
-                                    text: modelData.label
+                                    text: (lm.strings, lm.trProfile(modelData.name, modelData.label))
                                     font {
                                         family: uiState.fontFamily
                                         pixelSize: 12; bold: true
@@ -791,7 +791,7 @@ Item {
                                         Text {
                                             id: profBadgeText
                                             anchors.centerIn: parent
-                                            text: selectedProfileLabel
+                                            text: (lm.strings, lm.trProfile(selectedProfile, selectedProfileLabel))
                                             font { family: uiState.fontFamily; pixelSize: 11 }
                                             color: theme.accent
                                         }
@@ -929,7 +929,7 @@ Item {
                                         text: backend.mouseConnected
                                               ? (s["mouse.connected"]
                                                  + (backend.connectionType !== ""
-                                                    ? " · " + backend.connectionType : ""))
+                                                    ? " · " + (lm.strings, lm.trStatus(backend.connectionType)) : ""))
                                               : s["mouse.not_connected"]
                                         font { family: uiState.fontFamily; pixelSize: 11 }
                                         color: backend.mouseConnected
@@ -1296,7 +1296,7 @@ Item {
 
                                     Text {
                                         text: selectedButtonName
-                                              ? selectedButtonName + (s["mouse.choose_action_suffix"] || " — Choose Action")
+                                              ? (lm.strings, lm.trButton(selectedButtonName)) + (s["mouse.choose_action_suffix"] || " — Choose Action")
                                               : ""
                                         font { family: uiState.fontFamily; pixelSize: 15; bold: true }
                                         color: theme.textPrimary
@@ -1880,7 +1880,7 @@ Item {
                                     spacing: 14
 
                                     Text {
-                                        text: "DPI PRESETS"
+                                        text: s["mouse.dpi_presets"]
                                         font { family: uiState.fontFamily; pixelSize: 11;
                                                capitalization: Font.AllUppercase; letterSpacing: 1 }
                                         color: theme.textDim
@@ -1949,8 +1949,8 @@ Item {
                                                 anchors.verticalCenter: parent.verticalCenter
                                             }
                                             Text {
-                                                text: "Slot " + (dpiPresetsCard.activeSlot + 1) + ": "
-                                                      + Math.round(dpiPresetSlider.value) + " DPI"
+                                                text: s["mouse.dpi_slot"].replace("{slot}", dpiPresetsCard.activeSlot + 1)
+                                                      .replace("{dpi}", Math.round(dpiPresetSlider.value))
                                                 font { family: uiState.fontFamily; pixelSize: 12; bold: true }
                                                 color: dpiPresetsCard.slotColors[dpiPresetsCard.activeSlot]
                                             }
@@ -2000,14 +2000,13 @@ Item {
                                     Text {
                                         width: parent.width
                                         wrapMode: Text.WordWrap
-                                        text: "Press the button to cycle: "
-                                              + (function() {
+                                        text: s["mouse.dpi_cycle_hint"].replace("{values}", (function() {
                                                   var p = backend.dpiPresets
                                                   var parts = []
                                                   for (var i = 0; i < p.length; i++)
                                                       parts.push(p[i])
                                                   return parts.join(" \u2192 ")
-                                              })()
+                                              })())
                                         font { family: uiState.fontFamily; pixelSize: 11 }
                                         color: theme.textSecondary
                                     }
@@ -2200,7 +2199,7 @@ Item {
                                     Text {
                                         id: copyDevInfoText
                                         anchors.centerIn: parent
-                                        text: "Copy device info"
+                                        text: s["mouse.copy_device_info"]
                                         font { family: uiState.fontFamily; pixelSize: 11; bold: true }
                                         color: theme.textPrimary
                                     }
@@ -2282,8 +2281,8 @@ Item {
                                     }
 
                                     Text {
-                                        text: "Source: "
-                                              + (backend.gestureMoveSource ? backend.gestureMoveSource : "n/a")
+                                        text: s["mouse.source"]
+                                              + (backend.gestureMoveSource ? backend.gestureMoveSource : s["mouse.not_available"])
                                               + " | dx: " + backend.gestureMoveDx
                                               + " | dy: " + backend.gestureMoveDy
                                         font { family: "Menlo"; pixelSize: 11 }
@@ -2291,7 +2290,7 @@ Item {
                                     }
 
                                     Text {
-                                        text: backend.gestureStatus
+                                        text: (lm.strings, lm.trStatus(backend.gestureStatus))
                                         font { family: uiState.fontFamily; pixelSize: 11 }
                                         color: theme.textPrimary
                                         wrapMode: Text.Wrap
@@ -2884,7 +2883,7 @@ Item {
                 width: parent.width
                 text: pendingDeleteProfile
                       ? (s["mouse.delete_dialog.confirm_prefix"] || "Delete the profile for ")
-                        + selectedProfileLabel
+                        + (lm.strings, lm.trProfile(selectedProfile, selectedProfileLabel))
                         + (s["mouse.delete_dialog.confirm_suffix"] || "?")
                       : ""
                 font { family: uiState.fontFamily; pixelSize: 13; bold: true }

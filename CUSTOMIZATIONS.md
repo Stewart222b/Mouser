@@ -32,6 +32,14 @@
 
 `3.7.3+ctrlclick.3` 将普通按键按下时的震动改为立即发送，包括保留原生点击功能的中键。此前这条路径需要等待 HID 监听线程完成最长约 1 秒的读取；现在不再等待该队列，原生点击和松开行为保持不变。手势识别的完成反馈仍在手势确认后触发。
 
+### 中文界面（3.7.5）
+
+补齐简体／繁体中文的震动设置、按键动作、动作环选项、DPI 档位、默认配置名称和状态提示。语言切换后，已打开的控件和已选中的按键标题会立即更新；动作环浮层使用当前语言。
+
+只翻译显示文字，不修改动作 ID、配置 ID、用户自定义名称、文件路径和快捷键组合。产品名称与原始诊断信息保留原样。
+
+语言选择由后端统一保存，修复切换语言后保存其他设置可能写回旧语言的问题。自动检查覆盖 QML 词条、动作与按键名称、语言即时切换及配置持久化。
+
 ## 配置
 
 ### 跨屏震动（Windows）
@@ -73,7 +81,7 @@ Windows 使用 Python 3.12。`requirements-master4.txt` 将 Qt 固定到已验�
 ```powershell
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements-master4.txt
-.venv\Scripts\python.exe -m unittest tests.test_ctrl_left_click tests.test_ctrl_click_profiles tests.test_mouse_mapping_haptics tests.test_screen_haptics tests.test_engine tests.test_key_simulator tests.test_spec_coverage tests.test_updater tests.test_update_installer
+.venv\Scripts\python.exe -m unittest tests.test_ctrl_left_click tests.test_ctrl_click_profiles tests.test_mouse_mapping_haptics tests.test_screen_haptics tests.test_engine tests.test_key_simulator tests.test_spec_coverage tests.test_updater tests.test_update_installer tests.test_locale_manager tests.test_localization
 .venv\Scripts\python.exe -m PyInstaller Mouser.spec --noconfirm
 ```
 
