@@ -4,10 +4,7 @@ import QtQuick.Controls.Material
 import QtQuick.Layouts
 import "Theme.js" as Theme
 
-/*  Unified Mouse + Profiles page.
-    Left panel  — profile list with add/delete.
-    Right panel — interactive mouse image with hotspot overlay & action picker.
-    Selecting a profile switches which mappings are shown / edited.            */
+/* Profile selection stays above the workspace; preview and editor share one screen. */
 
 Item {
     id: mousePage
@@ -15,6 +12,7 @@ Item {
     readonly property bool hasBlockingDialog: addAppDialog.visible
                                              || deleteDialog.visible
                                              || keyCaptureDialog.visible
+                                             || deviceTools.visible
     property string pendingDeleteProfile: ""
     // Reactive i18n shortcut — all s["key"] bindings update on lm.languageChanged
     property var s: lm.strings
@@ -25,16 +23,16 @@ Item {
         ItemDelegate {
             width: parent ? parent.width : implicitWidth
             highlighted: ListView.isCurrentItem
-            font { family: uiState.fontFamily; pixelSize: 11 }
+            font { family: uiState.fontFamily; pixelSize: 12 }
             contentItem: Text {
                 leftPadding: 10; rightPadding: 10
                 text: (lm.strings, lm.trAction(modelData ? modelData.label : ""))
-                font { family: uiState.fontFamily; pixelSize: 11 }
+                font { family: uiState.fontFamily; pixelSize: 12 }
                 color: highlighted ? mousePage.theme.accent : mousePage.theme.textPrimary
                 verticalAlignment: Text.AlignVCenter
             }
             background: Rectangle {
-                color: highlighted ? Qt.rgba(0, 0.83, 0.67, 0.1) : "transparent"
+                color: highlighted ? Theme.alpha(theme.accent, 0.1) : "transparent"
             }
         }
     }
@@ -45,7 +43,7 @@ Item {
         ItemDelegate {
             width: parent ? parent.width : implicitWidth
             highlighted: ListView.isCurrentItem
-            font { family: uiState.fontFamily; pixelSize: 11 }
+            font { family: uiState.fontFamily; pixelSize: 12 }
             contentItem: Text {
                 leftPadding: 10; rightPadding: 10
                 text: {
@@ -55,12 +53,12 @@ Item {
                            ? (s["mouse.auto_detect"] || lbl)
                            : lbl
                 }
-                font { family: uiState.fontFamily; pixelSize: 11 }
+                font { family: uiState.fontFamily; pixelSize: 12 }
                 color: highlighted ? mousePage.theme.accent : mousePage.theme.textPrimary
                 verticalAlignment: Text.AlignVCenter
             }
             background: Rectangle {
-                color: highlighted ? Qt.rgba(0, 0.83, 0.67, 0.1) : "transparent"
+                color: highlighted ? Theme.alpha(theme.accent, 0.1) : "transparent"
             }
         }
     }
@@ -536,730 +534,202 @@ Item {
         }
     }
 
-    // ── Main two-column layout ────────────────────────────────
-    Row {
+    readonly property var availableButtonActions: {
+        var rows = backend.allActions.slice()
+        if (isGestureSwipeEligible && backend.supportsGestureDirections)
+            rows.splice(rows.length - 1, 0, {id: "gesture_swipe", label: "Gesture Swipe"})
+        return rows
+    }
+    function buttonActionIndex(aid) {
+        var target = isCustomAction(aid) ? "__custom__" : aid
+        for (var i = 0; i < availableButtonActions.length; ++i)
+            if (availableButtonActions[i].id === target) return i
+        return 0
+    }
+    function profileIndex() {
+        var rows = backend.profiles
+        for (var i = 0; i < rows.length; ++i) if (rows[i].name === selectedProfile) return i
+        return 0
+    }
+    readonly property var physicalButtons: {
+        var keys = backend.hapticButtonRows.map(function(row) { return row.key })
+        keys.push("hscroll_left")
+        return backend.getProfileMappings(selectedProfile).filter(function(row) {
+            return keys.indexOf(row.key) !== -1
+        })
+    }
+    function selectedHapticEnabled() {
+        var rows = backend.hapticEnabledButtons
+        for (var i = 0; i < rows.length; ++i) if (rows[i].key === selectedButton) return true
+        return false
+    }
+
+    ColumnLayout {
         anchors.fill: parent
-        spacing: 0
-
-        // ══════════════════════════════════════════════════════
-        // ── Left panel: profile list ─────────────────────────
-        // ══════════════════════════════════════════════════════
-        Rectangle {
-            id: leftPanel
-            width: 248
-            height: parent.height
-            color: theme.bgCard
-            border.width: 1; border.color: theme.border
-
-            Column {
-                anchors.fill: parent
-                spacing: 0
-
-                // Title bar
-                Item {
-                    width: parent.width; height: 52
-
-                    Text {
-                        anchors {
-                            left: parent.left; leftMargin: 16
-                            verticalCenter: parent.verticalCenter
-                        }
-                                text: s["mouse.profiles"]
-                                font { family: uiState.fontFamily; pixelSize: 14; bold: true }
-                                color: theme.textPrimary
-                    }
+        anchors.margins: 28
+        spacing: 14
+        RowLayout {
+            Layout.fillWidth: true
+            Text {
+                text: s["ui.buttons"]
+                font { family: uiState.fontFamily; pixelSize: 24; weight: Font.DemiBold }
+                color: theme.textPrimary
+                Layout.fillWidth: true
+            }
+            Text {
+                text: {
+                    var strings = lm.strings
+                    if (!backend.mouseConnected) return strings["ui.no_mouse"]
+                    var parts = [backend.deviceDisplayName]
+                    if (backend.connectionType) parts.push(lm.trStatus(backend.connectionType))
+                    if (backend.batteryLevel >= 0) parts.push(backend.batteryLevel + "%")
+                    return parts.join("  ·  ")
                 }
-
-                Rectangle { width: parent.width; height: 1; color: theme.border }
-
-                // Profile items
-                ListView {
-                    id: profileList
-                    width: parent.width
-                    height: parent.height - 54 - addProfileSection.height
-                    model: backend.profiles
-                    clip: true
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    delegate: Rectangle {
-                        width: profileList.width
-                        height: 58
-                        color: selectedProfile === modelData.name
-                               ? Qt.rgba(0, 0.83, 0.67, 0.08)
-                               : profItemMa.containsMouse
-                                 ? Qt.rgba(1, 1, 1, 0.03)
-                                 : "transparent"
-                        Behavior on color { ColorAnimation { duration: 120 } }
-
-                        Row {
-                            anchors {
-                                fill: parent
-                                leftMargin: 6; rightMargin: 10
-                            }
-                            spacing: 8
-
-                            // Active indicator
-                            Rectangle {
-                                width: 3; height: 28; radius: 2
-                                color: modelData.isActive
-                                       ? theme.accent : "transparent"
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            // App icons
-                            Row {
-                                spacing: -4
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: modelData.appIcons !== undefined
-                                         && modelData.appIcons.length > 0
-
-                                Repeater {
-                                    model: modelData.appIcons
-                                    delegate: Image {
-                                        source: modelData || ""
-                                        width: 24; height: 24
-                                        sourceSize { width: 24; height: 24 }
-                                        fillMode: Image.PreserveAspectFit
-                                        visible: source !== ""
-                                        smooth: true; mipmap: true
-                                        asynchronous: true
-                                        cache: true
-                                    }
-                                }
-                            }
-
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 2
-
-                                Text {
-                                    text: (lm.strings, lm.trProfile(modelData.name, modelData.label))
-                                    font {
-                                        family: uiState.fontFamily
-                                        pixelSize: 12; bold: true
-                                    }
-                                    color: selectedProfile === modelData.name
-                                           ? theme.accent : theme.textPrimary
-                                    elide: Text.ElideRight
-                                    width: leftPanel.width - 70
-                                }
-                                Text {
-                                    text: modelData.displayApps.length
-                                          ? modelData.displayApps.join(", ")
-                                          : (s["mouse.all_applications"] || "All applications")
-                                    font { family: uiState.fontFamily; pixelSize: 9 }
-                                    color: theme.textSecondary
-                                    elide: Text.ElideRight
-                                    width: leftPanel.width - 70
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            id: profItemMa
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: selectProfile(modelData.name)
-                        }
-                    }
-                }
-
-                Rectangle { width: parent.width; height: 1; color: theme.border }
-
-                // Add profile controls
-                Item {
-                    id: addProfileSection
-                    width: parent.width
-                    height: 88
-
-                    Rectangle {
-                        anchors {
-                            fill: parent
-                            leftMargin: 8
-                            rightMargin: 8
-                            topMargin: 10
-                            bottomMargin: 10
-                        }
-                        radius: 14
-                        color: theme.bgSubtle
-                        border.width: 1
-                        border.color: theme.border
-
-                        Row {
-                            anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            spacing: 10
-
-                            Rectangle {
-                                width: 30
-                                height: 30
-                                radius: 10
-                                anchors.verticalCenter: parent.verticalCenter
-                                color: Qt.rgba(0, 0.83, 0.67, uiState.darkMode ? 0.16 : 0.14)
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "+"
-                                    font { family: uiState.fontFamily; pixelSize: 16; bold: true }
-                                    color: theme.accent
-                                }
-                            }
-
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 2
-
-                                Text {
-                                    text: s["mouse.add_app_profile"]
-                                    font { family: uiState.fontFamily; pixelSize: 11; bold: true }
-                                    color: theme.textPrimary
-                                }
-
-                                Text {
-                                    text: s["mouse.search_installed_apps"]
-                                    font { family: uiState.fontFamily; pixelSize: 9 }
-                                    color: theme.textSecondary
-                                    elide: Text.ElideRight
-                                    width: leftPanel.width - 110
-                                }
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: openAddProfileDialog()
-                        }
-                    }
-                }
+                font { family: uiState.fontFamily; pixelSize: 12 }
+                color: theme.textSecondary
             }
         }
-
-        // ══════════════════════════════════════════════════════
-        // ── Right panel: mouse image + hotspots + picker ─────
-        // ══════════════════════════════════════════════════════
-        ScrollView {
-            width: parent.width - leftPanel.width
-            height: parent.height
-            contentWidth: availableWidth
-            clip: true
-
-            Flickable {
-                contentHeight: rightCol.implicitHeight + 32
-                boundsBehavior: Flickable.StopAtBounds
-
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+            Text { text: s["ui.edit_profile"]; font { family: uiState.fontFamily; pixelSize: 14 } color: theme.textPrimary }
+            ComboBox {
+                objectName: "profileSelector"
+                Layout.preferredWidth: Math.min(260, mousePage.width * 0.3)
+                model: backend.profiles
+                textRole: "label"
+                currentIndex: mousePage.profileIndex()
+                font { family: uiState.fontFamily; pixelSize: 14 }
+                displayText: (lm.strings, lm.trProfile(selectedProfile, selectedProfileLabel))
+                delegate: ItemDelegate {
+                    required property var modelData
+                    width: parent ? parent.width : implicitWidth
+                    text: (lm.strings, lm.trProfile(modelData.name, modelData.label))
+                    highlighted: ListView.isCurrentItem
+                    font { family: uiState.fontFamily; pixelSize: 14 }
+                }
+                onActivated: function(index) { selectProfile(backend.profiles[index].name) }
+            }
+            Button { text: s["ui.add_profile"]; flat: true; onClicked: openAddProfileDialog() }
+            Item { Layout.fillWidth: true }
+            Button {
+                visible: selectedProfile !== "" && selectedProfile !== "default"
+                text: s["mouse.delete_profile"]
+                flat: true
+                onClicked: { pendingDeleteProfile = selectedProfile; deleteDialog.open() }
+            }
+        }
+        Text {
+            text: selectedProfile === "default" ? s["ui.default_profile_hint"] : s["ui.app_profile_hint"]
+            font { family: uiState.fontFamily; pixelSize: 12 }
+            color: theme.textSecondary
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+        }
+        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: theme.border }
+        RowLayout {
+            id: buttonWorkspace
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 24
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumWidth: 260
+                Item {
+                    id: mouseImageArea
+                    objectName: "mousePreview"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Image {
+                        id: mouseImg
+                        source: backend.deviceImageSource
+                        fillMode: Image.PreserveAspectFit
+                        width: Math.min(backend.deviceImageWidth, parent.width - 24)
+                        height: Math.min(backend.deviceImageHeight, parent.height - 24)
+                        anchors.centerIn: parent
+                        visible: backend.mouseConnected
+                        smooth: true; mipmap: true; asynchronous: true
+                        property real offX: (width - paintedWidth) / 2
+                        property real offY: (height - paintedHeight) / 2
+                    }
+                    Repeater {
+                        model: backend.mouseConnected && backend.hasInteractiveDeviceLayout ? backend.deviceHotspots : []
+                        HotspotDot {
+                            required property var modelData
+                            anchors.fill: mouseImageArea
+                            imgItem: mouseImg
+                            normX: modelData.normX; normY: modelData.normY
+                            buttonKey: modelData.buttonKey
+                            isHScroll: modelData.isHScroll || false
+                            label: modelData.label
+                            sublabel: ""
+                            labelSide: modelData.labelSide
+                            labelOffX: Math.max(-80, Math.min(80, modelData.labelOffX))
+                            labelOffY: Math.max(-45, Math.min(45, modelData.labelOffY))
+                        }
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        width: parent.width - 32
+                        visible: !backend.mouseConnected
+                        text: s["mouse.turn_on_mouse"]
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                        font { family: uiState.fontFamily; pixelSize: 14 }
+                        color: theme.textSecondary
+                    }
+                }
+                ComboBox {
+                    objectName: "physicalButtonSelector"
+                    Layout.fillWidth: true
+                    model: mousePage.physicalButtons
+                    textRole: "name"
+                    font { family: uiState.fontFamily; pixelSize: 14 }
+                    displayText: selectedButtonName ? (lm.strings, lm.trButton(selectedButtonName)) : s["ui.select_button"]
+                    delegate: ItemDelegate {
+                        required property var modelData
+                        width: parent ? parent.width : implicitWidth
+                        text: (lm.strings, lm.trButton(modelData.name))
+                        font { family: uiState.fontFamily; pixelSize: 14 }
+                        highlighted: ListView.isCurrentItem
+                    }
+                    onActivated: function(index) {
+                        var row = model[index]
+                        if (row.key === "hscroll_left" || row.key === "hscroll_right") {
+                            if (selectedButton !== "hscroll_left") selectHScroll()
+                        } else if (selectedButton !== row.key) selectButton(row.key)
+                    }
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: s["ui.button_preview_hint"]
+                    font { family: uiState.fontFamily; pixelSize: 12 }
+                    color: theme.textSecondary
+                    wrapMode: Text.WordWrap
+                }
+            }
+            Rectangle { Layout.fillHeight: true; implicitWidth: 1; color: theme.border }
+            ScrollView {
+                objectName: "buttonEditor"
+                Layout.preferredWidth: Math.min(360, mousePage.width * 0.44)
+                Layout.fillHeight: true
+                clip: true
+                contentWidth: availableWidth
                 Column {
-                    id: rightCol
                     width: parent.width
-                    spacing: 0
-
-                    // ── Header ────────────────────────────────
-                    Item {
-                        width: parent.width; height: 70
-
-                        Row {
-                            anchors {
-                                left: parent.left; leftMargin: 28
-                                verticalCenter: parent.verticalCenter
-                            }
-                            spacing: 12
-
-                            Column {
-                                spacing: 3
-                                anchors.verticalCenter: parent.verticalCenter
-
-                                Row {
-                                    spacing: 8
-
-                                    Text {
-                                        text: backend.deviceDisplayName
-                                        font { family: uiState.fontFamily; pixelSize: 20; bold: true }
-                                        color: theme.textPrimary
-                                    }
-
-                                    // Profile badge
-                                    Rectangle {
-                                        visible: selectedProfileLabel !== ""
-                                        width: profBadgeText.implicitWidth + 16
-                                        height: 22; radius: 11
-                                        color: Qt.rgba(0, 0.83, 0.67, 0.12)
-                                        anchors.verticalCenter: parent.verticalCenter
-
-                                        Text {
-                                            id: profBadgeText
-                                            anchors.centerIn: parent
-                                            text: (lm.strings, lm.trProfile(selectedProfile, selectedProfileLabel))
-                                            font { family: uiState.fontFamily; pixelSize: 11 }
-                                            color: theme.accent
-                                        }
-                                    }
-                                }
-
-                                Text {
-                                    text: !backend.mouseConnected
-                                          ? s["mouse.turn_on_mouse"]
-                                          : backend.hasInteractiveDeviceLayout
-                                            ? s["mouse.click_dot"]
-                                            : s["mouse.choose_layout"]
-                                    font { family: uiState.fontFamily; pixelSize: 12 }
-                                    color: theme.textSecondary
-                                }
-                            }
-                        }
-
-                        // Right-side status row: delete button + battery + connection
-                        Row {
-                            anchors {
-                                right: parent.right; rightMargin: 28
-                                verticalCenter: parent.verticalCenter
-                            }
-                            spacing: 8
-
-                            // Delete profile button (not for default)
-                            Rectangle {
-                                visible: selectedProfile !== ""
-                                         && selectedProfile !== "default"
-                                width: delRow.implicitWidth + 18
-                                height: 28
-                                radius: 10
-                                color: delMa.containsMouse ? theme.danger : theme.dangerBg
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                anchors.verticalCenter: parent.verticalCenter
-
-                                Row {
-                                    id: delRow
-                                    anchors.centerIn: parent
-                                    spacing: 6
-
-                                    AppIcon {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 14
-                                        height: 14
-                                        name: "trash"
-                                        iconColor: uiState.darkMode ? theme.textPrimary : theme.danger
-                                    }
-
-                                    Text {
-                                        text: s["mouse.delete_profile"]
-                                        font { family: uiState.fontFamily; pixelSize: 10; bold: true }
-                                        color: uiState.darkMode ? theme.textPrimary : theme.danger
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: delMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        pendingDeleteProfile = selectedProfile
-                                        deleteDialog.open()
-                                    }
-                                }
-                            }
-
-                            // Battery badge
-                            Rectangle {
-                                visible: backend.batteryLevel >= 0
-                                width: battRow.implicitWidth + 16
-                                height: 24; radius: 12
-                                anchors.verticalCenter: parent.verticalCenter
-                                color: {
-                                    var lvl = backend.batteryLevel
-                                    if (lvl <= 20) return Qt.rgba(0.88, 0.2, 0.2, 0.18)
-                                    if (lvl <= 40) return Qt.rgba(0.9, 0.56, 0.1, 0.18)
-                                    return Qt.rgba(0, 0.83, 0.67, uiState.darkMode ? 0.12 : 0.16)
-                                }
-
-                                Row {
-                                    id: battRow
-                                    anchors.centerIn: parent
-                                    spacing: 6
-
-                                    AppIcon {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 14
-                                        height: 14
-                                        name: backend.batteryCharging ? "battery-charging" : "battery-high"
-                                        iconColor: {
-                                            var lvl = backend.batteryLevel
-                                            if (lvl <= 20) return "#e05555"
-                                            if (lvl <= 40) return "#e09045"
-                                            return theme.accent
-                                        }
-                                    }
-
-                                    Text {
-                                        text: backend.batteryLevel + "%"
-                                        font { family: uiState.fontFamily; pixelSize: 11; bold: true }
-                                        color: {
-                                            var lvl = backend.batteryLevel
-                                            if (lvl <= 20) return "#e05555"
-                                            if (lvl <= 40) return "#e09045"
-                                            return theme.accent
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Connection status badge
-                            Rectangle {
-                                width: statusRow.implicitWidth + 16
-                                height: 24; radius: 12
-                                anchors.verticalCenter: parent.verticalCenter
-                                color: backend.mouseConnected
-                                       ? Qt.rgba(0, 0.83, 0.67, 0.12)
-                                       : Qt.rgba(0.9, 0.3, 0.3, 0.15)
-
-                                Row {
-                                    id: statusRow
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Rectangle {
-                                        width: 7; height: 7; radius: 4
-                                        color: backend.mouseConnected
-                                               ? theme.accent : "#e05555"
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                    Text {
-                                        text: backend.mouseConnected
-                                              ? (s["mouse.connected"]
-                                                 + (backend.connectionType !== ""
-                                                    ? " · " + (lm.strings, lm.trStatus(backend.connectionType)) : ""))
-                                              : s["mouse.not_connected"]
-                                        font { family: uiState.fontFamily; pixelSize: 11 }
-                                        color: backend.mouseConnected
-                                               ? theme.accent : "#e05555"
-                                    }
-                                }
-                            }
-
-                            // Layout picker pill
-                            Rectangle {
-                                visible: backend.mouseConnected
-                                width: layoutPillRow.implicitWidth + 16
-                                height: 24; radius: 12
-                                anchors.verticalCenter: parent.verticalCenter
-                                color: layoutPillMa.containsMouse
-                                       ? Qt.rgba(0.5, 0.5, 0.5, 0.18)
-                                       : (backend.deviceLayoutOverrideKey !== ""
-                                          ? Qt.rgba(0.95, 0.7, 0.2, 0.18)
-                                          : Qt.rgba(0.5, 0.5, 0.5, 0.10))
-
-                                Row {
-                                    id: layoutPillRow
-                                    anchors.centerIn: parent
-                                    spacing: 4
-
-                                    Text {
-                                        text: {
-                                            if (backend.deviceLayoutOverrideKey !== "")
-                                                return currentLayoutChoiceLabel()
-                                            return backend.deviceDisplayName || "Auto"
-                                        }
-                                        font { family: uiState.fontFamily; pixelSize: 10 }
-                                        color: backend.deviceLayoutOverrideKey !== ""
-                                               ? "#d4a017" : theme.textSecondary
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                    Text {
-                                        text: "\u25BE"
-                                        font.pixelSize: 9
-                                        color: theme.textSecondary
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: layoutPillMa
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: layoutMenu.open()
-                                }
-
-                                Menu {
-                                    id: layoutMenu
-                                    y: parent.height + 4
-
-                                    Repeater {
-                                        model: backend.manualLayoutChoices
-                                        MenuItem {
-                                            text: {
-                                                var lbl = modelData.label || ""
-                                                return lbl === "Auto-detect"
-                                                       ? (s["mouse.auto_detect"] || lbl)
-                                                       : lbl
-                                            }
-                                            font { family: uiState.fontFamily; pixelSize: 11 }
-                                            highlighted: modelData.key === backend.deviceLayoutOverrideKey
-                                                         || (modelData.key === "" && backend.deviceLayoutOverrideKey === "")
-                                            onTriggered: backend.setDeviceLayoutOverride(modelData.key)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Rectangle {
-                        width: parent.width - 56; height: 1
-                        color: theme.border
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-
-                    // ── Mouse image with hotspots ─────────────
-                    Item {
-                        id: mouseImageArea
+                    spacing: 18
+                    Text {
                         width: parent.width
-                        height: 420
-
-                        Rectangle {
-                            anchors.fill: parent
-                            color: theme.bg
-                        }
-
-                        Image {
-                            id: mouseImg
-                            source: backend.deviceImageSource
-                            fillMode: Image.PreserveAspectFit
-                            width: backend.deviceImageWidth
-                            height: backend.deviceImageHeight
-                            anchors.centerIn: parent
-                            visible: backend.mouseConnected
-                            smooth: true
-                            mipmap: true
-                            asynchronous: true
-                            cache: true
-
-                            property real offX: (width - paintedWidth) / 2
-                            property real offY: (height - paintedHeight) / 2
-                        }
-
-                        Rectangle {
-                            visible: !backend.mouseConnected
-                            width: Math.min(parent.width - 120, 760)
-                            height: emptyStateCol.implicitHeight + 52
-                            radius: 24
-                            anchors.centerIn: parent
-                            color: theme.bgCard
-                            border.width: 1
-                            border.color: theme.border
-
-                            Column {
-                                id: emptyStateCol
-                                anchors.fill: parent
-                                anchors.margins: 26
-                                spacing: 14
-
-                                Rectangle {
-                                    width: waitingRow.implicitWidth + 16
-                                    height: 28
-                                    radius: 14
-                                    color: Qt.rgba(0.9, 0.3, 0.3, uiState.darkMode ? 0.18 : 0.10)
-
-                                    Row {
-                                        id: waitingRow
-                                        anchors.centerIn: parent
-                                        spacing: 8
-
-                                        Rectangle {
-                                            width: 8
-                                            height: 8
-                                            radius: 4
-                                            color: "#e05555"
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
-
-                                        Text {
-                                            text: s["mouse.waiting_for_connection"]
-                                            font { family: uiState.fontFamily; pixelSize: 11; bold: true }
-                                            color: "#e05555"
-                                        }
-                                    }
-                                }
-
-                                Text {
-                                    width: parent.width
-                                    text: s["mouse.connect_mouse"]
-                                    wrapMode: Text.WordWrap
-                                    font { family: uiState.fontFamily; pixelSize: 26; bold: true }
-                                    color: theme.textPrimary
-                                }
-
-                                Text {
-                                    width: Math.min(parent.width, 680)
-                                    text: s["mouse.connect_mouse_desc"]
-                                    wrapMode: Text.WordWrap
-                                    font { family: uiState.fontFamily; pixelSize: 13 }
-                                    color: theme.textSecondary
-                                }
-
-                                Flow {
-                                    width: parent.width
-                                    spacing: 10
-
-                                    Rectangle {
-                                        width: firstHint.implicitWidth + 20
-                                        height: 30
-                                        radius: 15
-                                        color: theme.bgSubtle
-                                        border.width: 1
-                                        border.color: theme.border
-
-                                        Text {
-                                            id: firstHint
-                                            anchors.centerIn: parent
-                                            text: s["mouse.layout_appears_auto"]
-                                            font { family: uiState.fontFamily; pixelSize: 11 }
-                                            color: theme.textSecondary
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        width: secondHint.implicitWidth + 20
-                                        height: 30
-                                        radius: 15
-                                        color: theme.bgSubtle
-                                        border.width: 1
-                                        border.color: theme.border
-
-                                        Text {
-                                            id: secondHint
-                                            anchors.centerIn: parent
-                                            text: s["mouse.per_device_settings"]
-                                            font { family: uiState.fontFamily; pixelSize: 11 }
-                                            color: theme.textSecondary
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Repeater {
-                            model: backend.deviceHotspots
-
-                            delegate: HotspotDot {
-                                required property int index
-                                readonly property var hotspot: backend.deviceHotspots[index]
-                                anchors.fill: mouseImageArea
-                                imgItem: mouseImg
-                                normX: Number(hotspot["normX"] || 0)
-                                normY: Number(hotspot["normY"] || 0)
-                                buttonKey: String(hotspot["buttonKey"] || "")
-                                isHScroll: hotspot["isHScroll"] === true
-                                label: String(hotspot["label"] || hotspot["buttonKey"] || "")
-                                sublabel: hotspotSublabel(hotspot)
-                                labelSide: String(hotspot["labelSide"] || "right")
-                                labelOffX: hotspot["labelOffX"] === undefined ? 120 : Number(hotspot["labelOffX"])
-                                labelOffY: hotspot["labelOffY"] === undefined ? -30 : Number(hotspot["labelOffY"])
-                            }
-                        }
-
-                        Rectangle {
-                            visible: backend.mouseConnected && !backend.hasInteractiveDeviceLayout
-                            width: Math.min(420, parent.width - 48)
-                            height: fallbackCol.implicitHeight + 32
-                            radius: 16
-                            color: theme.bgCard
-                            border.width: 1
-                            border.color: theme.border
-                            anchors.centerIn: parent
-
-                            Column {
-                                id: fallbackCol
-                                anchors.fill: parent
-                                anchors.margins: 16
-                                spacing: 10
-
-                                Text {
-                                    text: s["mouse.interactive_layout_coming"]
-                                    width: parent.width
-                                    font { family: uiState.fontFamily; pixelSize: 15; bold: true }
-                                    color: theme.textPrimary
-                                }
-
-                                Text {
-                                    text: backend.deviceLayoutNote
-                                    width: parent.width
-                                    wrapMode: Text.WordWrap
-                                    font { family: uiState.fontFamily; pixelSize: 12 }
-                                    color: theme.textSecondary
-                                    visible: text !== ""
-                                }
-
-                                // Clickable button list for devices without an interactive overlay
-                                Repeater {
-                                    model: backend.buttons
-                                    delegate: Rectangle {
-                                        required property var modelData
-                                        width: fallbackCol.width
-                                        height: 40
-                                        radius: 10
-                                        color: selectedButton === modelData.key
-                                               ? Qt.rgba(theme.accent.r, theme.accent.g, theme.accent.b, 0.12)
-                                               : fbBtnArea.containsMouse
-                                                 ? Qt.rgba(theme.textPrimary.r, theme.textPrimary.g, theme.textPrimary.b, 0.06)
-                                                 : "transparent"
-                                        border.width: selectedButton === modelData.key ? 1 : 0
-                                        border.color: theme.accent
-
-                                        Row {
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 12
-                                            anchors.rightMargin: 12
-                                            spacing: 8
-
-                                            Text {
-                                                text: lm.trButton(modelData.name)
-                                                width: parent.width * 0.45
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                font { family: uiState.fontFamily; pixelSize: 13; bold: true }
-                                                color: selectedButton === modelData.key
-                                                       ? theme.accent : theme.textPrimary
-                                                elide: Text.ElideRight
-                                            }
-
-                                            Text {
-                                                text: lm.trAction(modelData.actionLabel)
-                                                width: parent.width * 0.55 - 8
-                                                anchors.verticalCenter: parent.verticalCenter
-                                                horizontalAlignment: Text.AlignRight
-                                                font { family: uiState.fontFamily; pixelSize: 12 }
-                                                color: theme.textSecondary
-                                                elide: Text.ElideRight
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: fbBtnArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: selectButton(modelData.key)
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        visible: selectedButton === ""
+                        text: s["ui.select_button_hint"]
+                        font { family: uiState.fontFamily; pixelSize: 14 }
+                        color: theme.textSecondary
+                        wrapMode: Text.WordWrap
                     }
-
-                    // ── Separator ─────────────────────────────
-                    Rectangle {
-                        width: parent.width - 56; height: 1
-                        color: theme.border
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        visible: selectedButton !== ""
-                    }
-
-                    // ── Action picker ─────────────────────────
                     Rectangle {
                         id: actionPicker
-                        width: parent.width - 56
+                        width: parent.width
                         anchors.horizontalCenter: parent.horizontalCenter
                         height: selectedButton !== ""
                                 ? pickerCol.implicitHeight + 32 : 0
@@ -1275,7 +745,7 @@ Item {
                             id: pickerCol
                             anchors {
                                 left: parent.left; right: parent.right
-                                top: parent.top; topMargin: 16
+                                top: parent.top; topMargin: 0
                             }
                             spacing: 16
 
@@ -1284,7 +754,7 @@ Item {
                                 spacing: 12
 
                                 Rectangle {
-                                    width: 6; height: pickerTitleCol.height
+                                    Layout.preferredWidth: 0; Layout.preferredHeight: pickerTitleCol.height
                                     radius: 3; color: theme.accent
                                     Layout.alignment: Qt.AlignVCenter
                                 }
@@ -1296,9 +766,9 @@ Item {
 
                                     Text {
                                         text: selectedButtonName
-                                              ? (lm.strings, lm.trButton(selectedButtonName)) + (s["mouse.choose_action_suffix"] || " — Choose Action")
+                                              ? (lm.strings, lm.trButton(selectedButtonName))
                                               : ""
-                                        font { family: uiState.fontFamily; pixelSize: 15; bold: true }
+                                        font { family: uiState.fontFamily; pixelSize: 18; bold: true }
                                         color: theme.textPrimary
                                     }
                                     Text {
@@ -1318,76 +788,37 @@ Item {
 
                             // Horizontal scroll: left + right rows
                             Column {
-                                width: parent.width
-                                spacing: 14
-                                visible: selectedButton === "hscroll_left"
+    width: parent.width
+    spacing: 12
+    visible: selectedButton === "hscroll_left"
+    Repeater {
+        model: [
+            {key: "hscroll_left", label: s["mouse.scroll_left"], aid: hscrollLeftActionId},
+            {key: "hscroll_right", label: s["mouse.scroll_right"], aid: hscrollRightActionId}
+        ]
+        Column {
+            required property var modelData
+            width: parent.width
+            spacing: 6
+            Text { text: modelData.label; font { family: uiState.fontFamily; pixelSize: 14 } color: theme.textPrimary }
+            ComboBox {
+                width: parent.width
+                model: backend.allActions
+                textRole: "label"
+                delegate: actionComboDelegate
+                font { family: uiState.fontFamily; pixelSize: 13 }
+                currentIndex: actionIndexForId(modelData.aid)
+                displayText: isCustomAction(modelData.aid) ? customLabel(modelData.aid) : (lm.strings, lm.trAction(currentText))
+                onActivated: function(index) {
+                    var aid = backend.allActions[index].id
+                    if (aid === "__custom__") { keyCaptureDialog.open(selectedProfile, modelData.key); return }
+                    backend.setProfileMapping(selectedProfile, modelData.key, aid)
+                }
+            }
+        }
+    }
+}
 
-                                Text {
-                                    text: s["mouse.scroll_left"]
-                                    font { family: uiState.fontFamily; pixelSize: 11;
-                                           capitalization: Font.AllUppercase; letterSpacing: 1 }
-                                    color: theme.textDim
-                                }
-
-                                Flow {
-                                    width: parent.width; spacing: 8
-                                    Repeater {
-                                        model: backend.allActions
-                                        delegate: ActionChip {
-                                            visible: modelData.id !== "activate_actions_ring"
-                                            actionId: modelData.id
-                                            actionLabel: modelData.id === "__custom__" && isCustomAction(hscrollLeftActionId)
-                                                         ? customLabel(hscrollLeftActionId)
-                                                         : (lm.strings, lm.trAction(modelData.label))
-                                            isCurrent: modelData.id === "__custom__"
-                                                       ? isCustomAction(hscrollLeftActionId)
-                                                       : modelData.id === hscrollLeftActionId
-                                            onPicked: function(aid) {
-                                                if (aid === "__custom__") {
-                                                    keyCaptureDialog.open(selectedProfile, "hscroll_left")
-                                                    return
-                                                }
-                                                backend.setProfileMapping(
-                                                    selectedProfile, "hscroll_left", aid)
-                                            }
-                                        }
-                                    }
-                                }
-
-                                Item { width: 1; height: 4 }
-
-                                Text {
-                                    text: s["mouse.scroll_right"]
-                                    font { family: uiState.fontFamily; pixelSize: 11;
-                                           capitalization: Font.AllUppercase; letterSpacing: 1 }
-                                    color: theme.textDim
-                                }
-
-                                Flow {
-                                    width: parent.width; spacing: 8
-                                    Repeater {
-                                        model: backend.allActions
-                                        delegate: ActionChip {
-                                            visible: modelData.id !== "activate_actions_ring"
-                                            actionId: modelData.id
-                                            actionLabel: modelData.id === "__custom__" && isCustomAction(hscrollRightActionId)
-                                                         ? customLabel(hscrollRightActionId)
-                                                         : (lm.strings, lm.trAction(modelData.label))
-                                            isCurrent: modelData.id === "__custom__"
-                                                       ? isCustomAction(hscrollRightActionId)
-                                                       : modelData.id === hscrollRightActionId
-                                            onPicked: function(aid) {
-                                                if (aid === "__custom__") {
-                                                    keyCaptureDialog.open(selectedProfile, "hscroll_right")
-                                                    return
-                                                }
-                                                backend.setProfileMapping(
-                                                    selectedProfile, "hscroll_right", aid)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
 
                             Column {
                                 width: parent.width
@@ -1397,8 +828,8 @@ Item {
 
                                 Text {
                                     text: s["mouse.tap_action"]
-                                    font { family: uiState.fontFamily; pixelSize: 11;
-                                           capitalization: Font.AllUppercase; letterSpacing: 1 }
+                                    font { family: uiState.fontFamily; pixelSize: 12;
+                                            letterSpacing: 0 }
                                     color: theme.textDim
                                 }
 
@@ -1408,7 +839,7 @@ Item {
                                     textRole: "label"
                                     delegate: actionComboDelegate
                                     Material.accent: theme.accent
-                                    font { family: uiState.fontFamily; pixelSize: 11 }
+                                    font { family: uiState.fontFamily; pixelSize: 12 }
                                     currentIndex: actionIndexForId(swipeTapActionId)
                                     displayText: isCustomAction(swipeTapActionId)
                                                  ? customLabel(swipeTapActionId)
@@ -1485,8 +916,8 @@ Item {
                                 Text {
                                     visible: swipeTapActionId === "none"
                                     text: s["mouse.swipe_actions"]
-                                    font { family: uiState.fontFamily; pixelSize: 11;
-                                           capitalization: Font.AllUppercase; letterSpacing: 1 }
+                                    font { family: uiState.fontFamily; pixelSize: 12;
+                                            letterSpacing: 0 }
                                     color: theme.textDim
                                 }
 
@@ -1508,7 +939,7 @@ Item {
                                         textRole: "label"
                                         delegate: actionComboDelegate
                                         Material.accent: theme.accent
-                                        font { family: uiState.fontFamily; pixelSize: 11 }
+                                        font { family: uiState.fontFamily; pixelSize: 12 }
                                         currentIndex: actionIndexForId(swipeLeftActionId)
                                         displayText: isCustomAction(swipeLeftActionId)
                                                      ? customLabel(swipeLeftActionId)
@@ -1543,7 +974,7 @@ Item {
                                         textRole: "label"
                                         delegate: actionComboDelegate
                                         Material.accent: theme.accent
-                                        font { family: uiState.fontFamily; pixelSize: 11 }
+                                        font { family: uiState.fontFamily; pixelSize: 12 }
                                         currentIndex: actionIndexForId(swipeRightActionId)
                                         displayText: isCustomAction(swipeRightActionId)
                                                      ? customLabel(swipeRightActionId)
@@ -1578,7 +1009,7 @@ Item {
                                         textRole: "label"
                                         delegate: actionComboDelegate
                                         Material.accent: theme.accent
-                                        font { family: uiState.fontFamily; pixelSize: 11 }
+                                        font { family: uiState.fontFamily; pixelSize: 12 }
                                         currentIndex: actionIndexForId(swipeUpActionId)
                                         displayText: isCustomAction(swipeUpActionId)
                                                      ? customLabel(swipeUpActionId)
@@ -1613,7 +1044,7 @@ Item {
                                         textRole: "label"
                                         delegate: actionComboDelegate
                                         Material.accent: theme.accent
-                                        font { family: uiState.fontFamily; pixelSize: 11 }
+                                        font { family: uiState.fontFamily; pixelSize: 12 }
                                         currentIndex: actionIndexForId(swipeDownActionId)
                                         displayText: isCustomAction(swipeDownActionId)
                                                      ? customLabel(swipeDownActionId)
@@ -1633,87 +1064,41 @@ Item {
 
                             // Single button: categorized chips
                             Column {
-                                width: parent.width
-                                spacing: 14
-                                visible: selectedButton !== ""
-                                         && selectedButton !== "hscroll_left"
-                                         && !(isSwipeButton
-                                              && backend.supportsGestureDirections)
-                                         && !isGestureSwipeMode
+    width: parent.width
+    spacing: 12
+    visible: selectedButton !== "" && selectedButton !== "hscroll_left" && !isGestureSwipeMode
+    Text {
+        text: s["ui.execute_action"]
+        font { family: uiState.fontFamily; pixelSize: 14; weight: Font.DemiBold }
+        color: theme.textPrimary
+    }
+    ComboBox {
+        objectName: "buttonActionCombo"
+        width: parent.width
+        model: mousePage.availableButtonActions
+        textRole: "label"
+        delegate: actionComboDelegate
+        font { family: uiState.fontFamily; pixelSize: 14 }
+        currentIndex: mousePage.buttonActionIndex(selectedActionId)
+        displayText: isCustomAction(selectedActionId) ? customLabel(selectedActionId)
+                     : (lm.strings, lm.trAction(backend.actionLabelFor(selectedActionId)))
+        onActivated: function(index) {
+            var aid = mousePage.availableButtonActions[index].id
+            if (aid === "__custom__") { keyCaptureDialog.open(selectedProfile, selectedButton); return }
+            backend.setProfileMapping(selectedProfile, selectedButton, aid)
+            selectedActionId = aid
+        }
+    }
+    Text {
+        width: parent.width
+        visible: selectedActionId === "ctrl_left_click"
+        text: s["ui.ctrl_click_hint"]
+        wrapMode: Text.WordWrap
+        font { family: uiState.fontFamily; pixelSize: 12 }
+        color: theme.textSecondary
+    }
+}
 
-                                // Opt-in: turn an eligible button (back/forward/
-                                // middle the device advertises) into a gesture pad.
-                                Column {
-                                    width: parent.width
-                                    spacing: 8
-                                    visible: isGestureSwipeEligible
-                                             && backend.supportsGestureDirections
-
-                                    Text {
-                                        text: s["mouse.gesture"] || "Gesture"
-                                        font { family: uiState.fontFamily; pixelSize: 11;
-                                               capitalization: Font.AllUppercase; letterSpacing: 1 }
-                                        color: theme.textDim
-                                    }
-
-                                    Flow {
-                                        width: parent.width; spacing: 8
-                                        ActionChip {
-                                            actionId: "gesture_swipe"
-                                            actionLabel: s["mouse.gesture_swipe"] || "Gesture Swipe"
-                                            isCurrent: selectedActionId === "gesture_swipe"
-                                            onPicked: function(aid) {
-                                                backend.setProfileMapping(
-                                                    selectedProfile, selectedButton, "gesture_swipe")
-                                                selectedActionId = "gesture_swipe"
-                                            }
-                                        }
-                                    }
-                                }
-
-                                Repeater {
-                                    model: backend.actionCategories
-
-                                    delegate: Column {
-                                        width: parent.width
-                                        spacing: 8
-
-                                        Text {
-                                            text: { var _lang = lm.strings; return lm.trCategory(modelData.category) }
-                                            font { family: uiState.fontFamily; pixelSize: 11;
-                                                   capitalization: Font.AllUppercase;
-                                                   letterSpacing: 1 }
-                                            color: theme.textDim
-                                        }
-
-                                        Flow {
-                                            width: parent.width; spacing: 8
-                                            Repeater {
-                                                model: modelData.actions
-                                                delegate: ActionChip {
-                                                    actionId: modelData.id
-                                                    actionLabel: modelData.id === "__custom__" && isCustomAction(selectedActionId)
-                                                                 ? customLabel(selectedActionId)
-                                                                 : (lm.strings, lm.trAction(modelData.label))
-                                                    isCurrent: modelData.id === "__custom__"
-                                                               ? isCustomAction(selectedActionId)
-                                                               : modelData.id === selectedActionId
-                                                    onPicked: function(aid) {
-                                                        if (aid === "__custom__") {
-                                                            keyCaptureDialog.open(selectedProfile, selectedButton)
-                                                            return
-                                                        }
-                                                        backend.setProfileMapping(
-                                                            selectedProfile,
-                                                            selectedButton, aid)
-                                                        selectedActionId = aid
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
 
                             // ── Per-button Gesture Swipe editor ──────────────
                             // Shown when an eligible button's action is set to
@@ -1724,19 +1109,20 @@ Item {
                                 width: parent.width
                                 spacing: 14
                                 visible: isGestureSwipeMode
+                                objectName: "gestureButtonEditor"
 
                                 RowLayout {
                                     width: parent.width
                                     Text {
                                         text: s["mouse.gesture_swipe"] || "Gesture Swipe"
                                         Layout.fillWidth: true
-                                        font { family: uiState.fontFamily; pixelSize: 11;
-                                               capitalization: Font.AllUppercase; letterSpacing: 1 }
+                                        font { family: uiState.fontFamily; pixelSize: 12;
+                                                letterSpacing: 0 }
                                         color: theme.textDim
                                     }
                                     Text {
                                         text: s["mouse.remove"] || "Remove"
-                                        font { family: uiState.fontFamily; pixelSize: 11; underline: true }
+                                        font { family: uiState.fontFamily; pixelSize: 12; underline: true }
                                         color: theme.accent
                                         MouseArea {
                                             anchors.fill: parent
@@ -1752,8 +1138,8 @@ Item {
 
                                 Text {
                                     text: s["mouse.tap_action"] || "Tap action"
-                                    font { family: uiState.fontFamily; pixelSize: 11;
-                                           capitalization: Font.AllUppercase; letterSpacing: 1 }
+                                    font { family: uiState.fontFamily; pixelSize: 12;
+                                            letterSpacing: 0 }
                                     color: theme.textDim
                                 }
                                 ComboBox {
@@ -1762,7 +1148,7 @@ Item {
                                     textRole: "label"
                                     delegate: actionComboDelegate
                                     Material.accent: theme.accent
-                                    font { family: uiState.fontFamily; pixelSize: 11 }
+                                    font { family: uiState.fontFamily; pixelSize: 12 }
                                     currentIndex: actionIndexForId(gsTapActionId)
                                     displayText: isCustomAction(gsTapActionId)
                                                  ? customLabel(gsTapActionId)
@@ -1812,8 +1198,8 @@ Item {
 
                                 Text {
                                     text: s["mouse.swipe_actions"] || "Swipe actions"
-                                    font { family: uiState.fontFamily; pixelSize: 11;
-                                           capitalization: Font.AllUppercase; letterSpacing: 1 }
+                                    font { family: uiState.fontFamily; pixelSize: 12;
+                                            letterSpacing: 0 }
                                     color: theme.textDim
                                 }
 
@@ -1839,7 +1225,7 @@ Item {
                                             textRole: "label"
                                             delegate: actionComboDelegate
                                             Material.accent: theme.accent
-                                            font { family: uiState.fontFamily; pixelSize: 11 }
+                                            font { family: uiState.fontFamily; pixelSize: 12 }
                                             currentIndex: actionIndexForId(modelData.aid)
                                             displayText: isCustomAction(modelData.aid)
                                                          ? customLabel(modelData.aid)
@@ -1861,6 +1247,7 @@ Item {
                             // ── DPI Presets editor (when cycle_dpi is selected)
                             Rectangle {
                                 id: dpiPresetsCard
+                                objectName: "dpiPresetEditor"
                                 property int activeSlot: 0
                                 readonly property var slotColors: ["#e8d44d", "#5da5e8", "#e8943a", "#e05daa"]
                                 visible: selectedActionId === "cycle_dpi"
@@ -1881,8 +1268,8 @@ Item {
 
                                     Text {
                                         text: s["mouse.dpi_presets"]
-                                        font { family: uiState.fontFamily; pixelSize: 11;
-                                               capitalization: Font.AllUppercase; letterSpacing: 1 }
+                                        font { family: uiState.fontFamily; pixelSize: 12;
+                                                letterSpacing: 0 }
                                         color: theme.textDim
                                     }
 
@@ -2007,7 +1394,7 @@ Item {
                                                       parts.push(p[i])
                                                   return parts.join(" \u2192 ")
                                               })())
-                                        font { family: uiState.fontFamily; pixelSize: 11 }
+                                        font { family: uiState.fontFamily; pixelSize: 12 }
                                         color: theme.textSecondary
                                     }
                                 }
@@ -2016,11 +1403,57 @@ Item {
                             Item { width: 1; height: 8 }
                         }
                     }
-
-                    // ── Device info share card (always visible when connected)
-                    Rectangle {
+                    SettingRow {
+                        width: parent.width
+                        visible: backend.hapticSupported && selectedButton !== "" && selectedButton !== "hscroll_left"
+                        label: s["ui.haptic_on_press"]
+                        enabled: backend.hapticEnabled
+                        SettingsSwitch {
+                            objectName: "selectedButtonHapticSwitch"
+                            checked: mousePage.selectedHapticEnabled()
+                            Accessible.name: s["ui.haptic_on_press"]
+                            onClicked: backend.setButtonHaptic(selectedButton, checked)
+                        }
+                    }
+                    Item { width: 1; height: 16 }
+                }
+            }
+        }
+        Button {
+            objectName: "deviceToolsButton"
+            text: s["ui.device_tools"]
+            flat: true
+            onClicked: deviceTools.open()
+        }
+    }
+    Dialog {
+        id: deviceTools
+        parent: Overlay.overlay
+        modal: true
+        title: s["ui.device_tools"]
+        width: Math.min(760, mousePage.width - 32)
+        height: Math.min(620, mousePage.height - 32)
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
+        standardButtons: Dialog.Close
+        contentItem: ScrollView {
+            clip: true
+            contentWidth: availableWidth
+            Column {
+                width: parent.width
+                spacing: 16
+                ComboBox {
+                    width: parent.width
+                    model: backend.manualLayoutChoices
+                    textRole: "label"
+                    delegate: layoutComboDelegate
+                    currentIndex: manualLayoutChoiceIndex(backend.deviceLayoutOverrideKey)
+                    displayText: currentLayoutChoiceLabel()
+                    onActivated: function(index) { backend.setDeviceLayoutOverride(backend.manualLayoutChoices[index].key) }
+                }
+                                    Rectangle {
                         visible: backend.mouseConnected
-                        width: parent.width - 56
+                        width: parent.width
                         anchors.horizontalCenter: parent.horizontalCenter
                         height: shareDevRow.implicitHeight + 24
                         radius: 14
@@ -2034,7 +1467,7 @@ Item {
                             spacing: 10
 
                             Text {
-                                text: s["mouse.share_device_details"] || "Help us support your mouse"
+                                text: s["ui.device_info"]
                                 font { family: uiState.fontFamily; pixelSize: 12 }
                                 color: theme.textSecondary
                                 anchors.verticalCenter: parent.verticalCenter
@@ -2044,8 +1477,8 @@ Item {
                                 width: shareDevBtnRow.implicitWidth + 20
                                 height: 30; radius: 10
                                 color: shareDevBtnMa.containsMouse
-                                       ? Qt.rgba(0, 0.83, 0.67, 0.22)
-                                       : Qt.rgba(0, 0.83, 0.67, 0.12)
+                                       ? Theme.alpha(theme.accent, 0.22)
+                                       : Theme.alpha(theme.accent, 0.12)
                                 anchors.verticalCenter: parent.verticalCenter
 
                                 Row {
@@ -2060,7 +1493,7 @@ Item {
                                     }
                                     Text {
                                         text: s["mouse.copy_device_info"] || "Copy device info"
-                                        font { family: uiState.fontFamily; pixelSize: 11; bold: true }
+                                        font { family: uiState.fontFamily; pixelSize: 12; bold: true }
                                         color: theme.accent
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
@@ -2086,9 +1519,8 @@ Item {
                             }
                         }
                     }
-
-                    Rectangle {
-                        width: parent.width - 56
+Rectangle {
+                        width: parent.width
                         anchors.horizontalCenter: parent.horizontalCenter
                         height: debugCol.implicitHeight + 24
                         radius: 14
@@ -2119,19 +1551,19 @@ Item {
 
                                     Text {
                                         text: s["mouse.debug_events_desc"]
-                                        font { family: uiState.fontFamily; pixelSize: 11 }
+                                        font { family: uiState.fontFamily; pixelSize: 12 }
                                         color: theme.textSecondary
                                     }
                                 }
 
-                                Switch {
+                                SettingsSwitch {
                                     checked: backend.debugEventsEnabled
                                     text: checked ? s["mouse.on"] : s["mouse.off"]
                                     Material.accent: theme.accent
                                     onToggled: backend.setDebugEventsEnabled(checked)
                                 }
 
-                                Switch {
+                                SettingsSwitch {
                                     checked: backend.recordMode
                                     text: checked ? s["mouse.rec"] : s["mouse.record"]
                                     Material.accent: "#e46f4e"
@@ -2150,7 +1582,7 @@ Item {
                                         id: clearText
                                         anchors.centerIn: parent
                                         text: s["mouse.clear"]
-                                        font { family: uiState.fontFamily; pixelSize: 11; bold: true }
+                                        font { family: uiState.fontFamily; pixelSize: 12; bold: true }
                                         color: theme.textPrimary
                                     }
 
@@ -2175,7 +1607,7 @@ Item {
                                         id: clearRecText
                                         anchors.centerIn: parent
                                         text: s["mouse.clear_rec"]
-                                        font { family: uiState.fontFamily; pixelSize: 11; bold: true }
+                                        font { family: uiState.fontFamily; pixelSize: 12; bold: true }
                                         color: theme.textPrimary
                                     }
 
@@ -2200,7 +1632,7 @@ Item {
                                         id: copyDevInfoText
                                         anchors.centerIn: parent
                                         text: s["mouse.copy_device_info"]
-                                        font { family: uiState.fontFamily; pixelSize: 11; bold: true }
+                                        font { family: uiState.fontFamily; pixelSize: 12; bold: true }
                                         color: theme.textPrimary
                                     }
 
@@ -2238,7 +1670,7 @@ Item {
 
                                     Text {
                                         text: s["mouse.live_gesture_monitor"]
-                                        font { family: uiState.fontFamily; pixelSize: 11; bold: true }
+                                        font { family: uiState.fontFamily; pixelSize: 12; bold: true }
                                         color: theme.textPrimary
                                     }
 
@@ -2257,7 +1689,7 @@ Item {
                                                 id: activeText
                                                 anchors.centerIn: parent
                                                 text: backend.gestureActive ? s["mouse.held"] : s["mouse.idle"]
-                                                font { family: uiState.fontFamily; pixelSize: 11; bold: true }
+                                                font { family: uiState.fontFamily; pixelSize: 12; bold: true }
                                                 color: backend.gestureActive ? "#f39c6b" : theme.textSecondary
                                             }
                                         }
@@ -2267,14 +1699,14 @@ Item {
                                             height: 24
                                             radius: 12
                                             color: backend.gestureMoveSeen
-                                                   ? Qt.rgba(0, 0.83, 0.67, 0.12)
+                                                   ? Theme.alpha(theme.accent, 0.12)
                                                    : Qt.rgba(1, 1, 1, 0.05)
 
                                             Text {
                                                 id: moveText
                                                 anchors.centerIn: parent
                                                 text: backend.gestureMoveSeen ? s["mouse.move_seen"] : s["mouse.no_move"]
-                                                font { family: uiState.fontFamily; pixelSize: 11; bold: true }
+                                                font { family: uiState.fontFamily; pixelSize: 12; bold: true }
                                                 color: backend.gestureMoveSeen ? theme.accent : theme.textSecondary
                                             }
                                         }
@@ -2285,13 +1717,13 @@ Item {
                                               + (backend.gestureMoveSource ? backend.gestureMoveSource : s["mouse.not_available"])
                                               + " | dx: " + backend.gestureMoveDx
                                               + " | dy: " + backend.gestureMoveDy
-                                        font { family: "Menlo"; pixelSize: 11 }
+                                        font { family: "Menlo"; pixelSize: 12 }
                                         color: theme.textSecondary
                                     }
 
                                     Text {
                                         text: (lm.strings, lm.trStatus(backend.gestureStatus))
-                                        font { family: uiState.fontFamily; pixelSize: 11 }
+                                        font { family: uiState.fontFamily; pixelSize: 12 }
                                         color: theme.textPrimary
                                         wrapMode: Text.Wrap
                                     }
@@ -2322,7 +1754,7 @@ Item {
                                         color: backend.debugLog.length
                                                ? theme.textPrimary
                                                : theme.textSecondary
-                                        font.pixelSize: 11
+                                        font.pixelSize: 12
                                         font.family: "Menlo"
                                         background: null
                                         padding: 10
@@ -2357,7 +1789,7 @@ Item {
                                         color: backend.gestureRecords.length
                                                ? theme.textPrimary
                                                : theme.textSecondary
-                                        font.pixelSize: 11
+                                        font.pixelSize: 12
                                         font.family: "Menlo"
                                         background: null
                                         padding: 10
@@ -2366,9 +1798,6 @@ Item {
                             }
                         }
                     }
-
-                    Item { width: 1; height: 24 }
-                }
             }
         }
     }
@@ -2484,7 +1913,7 @@ Item {
 
                     Text {
                         text: s["mouse.add_app_dialog.desc"]
-                        font { family: uiState.fontFamily; pixelSize: 11 }
+                        font { family: uiState.fontFamily; pixelSize: 12 }
                         color: theme.textSecondary
                     }
                 }
@@ -2631,7 +2060,7 @@ Item {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: addAppDialog.searching ? s["mouse.search_results"] : s["mouse.suggested_apps"]
-                        font { family: uiState.fontFamily; pixelSize: 11; bold: true }
+                        font { family: uiState.fontFamily; pixelSize: 12; bold: true }
                         color: theme.textPrimary
                     }
 
@@ -2639,7 +2068,7 @@ Item {
                         width: resultCountText.implicitWidth + 16
                         height: 22
                         radius: 11
-                        color: Qt.rgba(0, 0.83, 0.67, uiState.darkMode ? 0.12 : 0.14)
+                        color: Theme.alpha(theme.accent, uiState.darkMode ? 0.12 : 0.14)
 
                         Text {
                             id: resultCountText
@@ -2677,7 +2106,7 @@ Item {
                             height: 58
                             radius: 15
                             color: selectedKnownApp && selectedKnownApp.id === modelData.id
-                                   ? Qt.rgba(0, 0.83, 0.67, uiState.darkMode ? 0.16 : 0.12)
+                                   ? Theme.alpha(theme.accent, uiState.darkMode ? 0.16 : 0.12)
                                    : appRowMa.containsMouse
                                      ? Qt.rgba(1, 1, 1, uiState.darkMode ? 0.06 : 0.6)
                                      : "transparent"
@@ -2768,7 +2197,7 @@ Item {
                             text: addAppDialog.searching
                                   ? s["mouse.try_different"]
                                   : s["mouse.use_search"]
-                            font { family: uiState.fontFamily; pixelSize: 11 }
+                            font { family: uiState.fontFamily; pixelSize: 12 }
                             color: theme.textSecondary
                             wrapMode: Text.WordWrap
                         }
@@ -2794,7 +2223,7 @@ Item {
                     radius: 16
                     color: selectedKnownApp
                            ? (createDialogMa.containsMouse ? theme.accentHover : theme.accent)
-                           : Qt.rgba(0, 0.83, 0.67, 0.22)
+                           : Theme.alpha(theme.accent, 0.22)
 
                     Text {
                         anchors.centerIn: parent
@@ -2904,6 +2333,7 @@ Item {
     // ── Key capture dialog for custom shortcuts ──────────────
     KeyCaptureDialog {
         id: keyCaptureDialog
+        objectName: "shortcutCaptureDialog"
         onCaptured: function(comboString) {
             backend.setProfileMapping(
                 keyCaptureDialog.targetProfile,

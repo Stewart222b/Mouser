@@ -28,6 +28,7 @@ jobs:
           tests.test_key_simulator tests.test_spec_coverage
           tests.test_updater tests.test_update_installer
           tests.test_locale_manager tests.test_localization
+          tests.test_settings_ui
       - name: Build portable app
         run: python -m PyInstaller Mouser.spec --noconfirm
       - name: Include license and project documentation

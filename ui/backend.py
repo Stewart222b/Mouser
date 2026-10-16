@@ -779,6 +779,21 @@ class Backend(QObject):
 
     _HAPTIC_BUTTON_EXCLUDE = {"hscroll_left", "hscroll_right"}
 
+    @Property(list, notify=deviceLayoutChanged)
+    def hapticButtonRows(self):
+        """Stable device order, independent of the user's enabled allowlist."""
+        supported = self._effective_supported_buttons or set(BUTTON_NAMES)
+        return [{"key": key, "label": label} for key, label in BUTTON_NAMES.items()
+                if key in supported and key not in self._HAPTIC_BUTTON_EXCLUDE]
+
+    @Property(list, notify=hapticChanged)
+    def hapticActionRows(self):
+        """Keep configured actions visible even when they are outside the preset list."""
+        ids = set(HAPTIC_ELIGIBLE_ACTIONS)
+        ids.update(self._cfg.get("settings", {}).get("action_haptic", []))
+        return [{"id": aid, "label": ACTIONS[aid]["label"]}
+                for aid in sorted(ids) if aid in ACTIONS]
+
     @Property(list, notify=hapticChanged)
     def hapticEnabledButtons(self):
         """Buttons in the per-button haptic allowlist, in stored order."""

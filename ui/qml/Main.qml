@@ -7,9 +7,9 @@ import "Theme.js" as Theme
 ApplicationWindow {
     id: root
     visible: !launchHidden
-    width: 1500
+    width: 1240
     height: 800
-    minimumWidth: 920
+    minimumWidth: 1040
     minimumHeight: 620
     readonly property string versionLabel: "v" + appVersion
     title: backend.mouseConnected
@@ -28,21 +28,16 @@ ApplicationWindow {
                                                   : "monospace")
     property var s: lm.strings
     property int currentPage: 0
-    property Item hoveredNavItem: null
-    property string hoveredNavText: ""
-    property string hoveredNavTipKey: ""
-    property real hoveredNavCenterX: 0
-    property real hoveredNavCenterY: 0
     readonly property bool shortcutsBlocked: aboutDialog.visible
                                             || mousePageView.hasBlockingDialog
 
     property var navModel: {
         var items = [
-            { icon: "mouse-simple", tipKey: "nav.mouse_profiles", page: 0 },
-            { icon: "sliders-horizontal", tipKey: "nav.point_scroll", page: 1 }
+            { icon: "mouse-simple", tipKey: "ui.buttons", page: 0 },
+            { icon: "sliders-horizontal", tipKey: "ui.pointer_scroll", page: 1 }
         ]
         if (backend.hapticSupported) {
-            items.push({ icon: "circle", tipKey: "nav.haptic_feedback", page: 2 })
+            items.push({ icon: "vibration", tipKey: "nav.haptic_feedback", page: 2 })
         }
         if (backend.deviceHasActionsRing && backend.actionsRingActive) {
             items.push({ icon: "target", tipKey: "nav.actions_ring", page: 3 })
@@ -67,263 +62,130 @@ ApplicationWindow {
     RowLayout {
         anchors.fill: parent
         spacing: 0
-
         Rectangle {
             id: sidebar
-            Layout.preferredWidth: 72
+            Layout.preferredWidth: 184
             Layout.fillHeight: true
             color: root.theme.bgSidebar
-
-            Item {
-                anchors {
-                    fill: parent
-                    topMargin: 20
-                    bottomMargin: 16
-                }
-
-                Column {
-                    anchors {
-                        top: parent.top
-                        left: parent.left
-                        right: parent.right
-                    }
-                    spacing: 6
-
-                    Rectangle {
-                        // Brand mark in the top-left of the sidebar -- a
-                        // pocket-sized echo of the Dock icon: same navy
-                        // squircle, same white mouse glyph. Renders
-                        // identically across light / dark themes so the
-                        // brand stays recognisable regardless of system
-                        // appearance, and distinguishes itself from the
-                        // teal-accented navigation items below.
-                        width: 44
-                        height: 44
-                        radius: 14
-                        color: root.theme.brandMarkBg
-                        anchors.horizontalCenter: parent.horizontalCenter
-
-                        Accessible.role: Accessible.StaticText
-                        Accessible.name: "Mouser"
-                        Accessible.description: root.versionLabel
-
-                        AppIcon {
-                            anchors.centerIn: parent
-                            width: 24
-                            height: 24
-                            name: "mouse-simple"
-                            iconColor: root.theme.brandMarkFg
-                        }
-                    }
-
-                    Item { width: 1; height: 18 }
-
-                    Repeater {
-                        model: root.navModel
-
-                        delegate: FocusScope {
-                            id: navItem
-                            width: sidebar.width
-                            height: 56
-                            activeFocusOnTab: true
-
-                            Accessible.role: Accessible.Button
-                            Accessible.name: lm.strings[modelData.tipKey] || modelData.tipKey
-                            Accessible.description: "Open " + (lm.strings[modelData.tipKey] || modelData.tipKey)
-
-                            Keys.onReturnPressed: root.openPage(modelData.page)
-                            Keys.onEnterPressed: root.openPage(modelData.page)
-                            Keys.onSpacePressed: root.openPage(modelData.page)
-
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: 46
-                                height: 46
-                                radius: 14
-                                color: root.currentPage === modelData.page
-                                       ? Qt.rgba(0, 0.83, 0.67, root.darkMode ? 0.14 : 0.16)
-                                       : navMouse.containsMouse || navItem.activeFocus
-                                         ? Qt.rgba(1, 1, 1, root.darkMode ? 0.06 : 0.22)
-                                         : "transparent"
-
-                                border.width: navItem.activeFocus ? 1 : 0
-                                border.color: root.theme.accent
-
-                                Behavior on color { ColorAnimation { duration: 150 } }
-
-                                AppIcon {
-                                    anchors.centerIn: parent
-                                    width: 22
-                                    height: 22
-                                    name: modelData.icon
-                                    iconColor: root.currentPage === modelData.page
-                                               ? root.theme.accent
-                                               : navMouse.containsMouse || navItem.activeFocus
-                                                 ? root.theme.textPrimary
-                                                 : root.theme.textSecondary
-                                }
-                            }
-
-                            Rectangle {
-                                width: 3
-                                height: 24
-                                radius: 2
-                                color: root.theme.accent
-                                anchors {
-                                    left: parent.left
-                                    verticalCenter: parent.verticalCenter
-                                }
-                                visible: root.currentPage === modelData.page
-                            }
-
-                            MouseArea {
-                                id: navMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.openPage(modelData.page)
-                                onContainsMouseChanged: {
-                                    if (containsMouse) {
-                                        var p = navItem.mapToItem(overlayLayer, navItem.width, navItem.height / 2)
-                                        root.hoveredNavItem = navItem
-                                        root.hoveredNavTipKey = modelData.tipKey
-                                        root.hoveredNavText = lm.strings[modelData.tipKey] || modelData.tipKey
-                                        root.hoveredNavCenterX = p.x
-                                        root.hoveredNavCenterY = p.y
-                                    } else if (root.hoveredNavItem === navItem) {
-                                        root.hoveredNavItem = null
-                                        root.hoveredNavTipKey = ""
-                                        root.hoveredNavText = ""
-                                    }
-                                }
-                            }
-                        }
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: 4
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 15
+                    Layout.leftMargin: 12
+                    Layout.bottomMargin: 5
+                    spacing: 10
+                    AppIcon { name: "mouse-simple"; Layout.preferredWidth: 22; Layout.preferredHeight: 24; iconColor: root.theme.textPrimary }
+                    Text {
+                        text: "Mouser"
+                        font { family: uiState.fontFamily; pixelSize: 18; weight: Font.DemiBold }
+                        color: root.theme.textPrimary
                     }
                 }
-
-                FocusScope {
-                    id: aboutButton
-                    anchors {
-                        bottom: parent.bottom
-                        horizontalCenter: parent.horizontalCenter
-                    }
-                    width: sidebar.width
-                    height: 56
-                    activeFocusOnTab: true
-
-                    Accessible.role: Accessible.Button
-                    Accessible.name: lm.strings["nav.about"] || "About"
-                    Accessible.description: "Open " + (lm.strings["nav.about"] || "About")
-
-                    Keys.onReturnPressed: aboutDialog.open()
-                    Keys.onEnterPressed: aboutDialog.open()
-                    Keys.onSpacePressed: aboutDialog.open()
-
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 46
-                        height: 46
-                        radius: 14
-                        color: aboutMouse.containsMouse || aboutButton.activeFocus || aboutDialog.visible
-                               ? Qt.rgba(1, 1, 1, root.darkMode ? 0.06 : 0.22)
-                               : "transparent"
-
-                        border.width: aboutButton.activeFocus ? 1 : 0
-                        border.color: root.theme.accent
-
-                        Behavior on color { ColorAnimation { duration: 150 } }
-
-                        AppIcon {
-                            anchors.centerIn: parent
-                            width: 20
-                            height: 20
-                            name: "info"
-                            iconColor: aboutMouse.containsMouse || aboutButton.activeFocus || aboutDialog.visible
-                                       ? root.theme.textPrimary
-                                       : root.theme.textSecondary
-                        }
-                    }
-
-                    MouseArea {
-                        id: aboutMouse
-                        anchors.fill: parent
+                Text {
+                    Layout.leftMargin: 12
+                    Layout.bottomMargin: 26
+                    Layout.fillWidth: true
+                    text: backend.mouseConnected ? backend.deviceDisplayName : s["ui.no_mouse"]
+                    font { family: uiState.fontFamily; pixelSize: 12 }
+                    color: root.theme.textSecondary
+                    elide: Text.ElideRight
+                }
+                Repeater {
+                    model: root.navModel
+                    Button {
+                        id: navButton
+                        required property var modelData
+                        objectName: "navigation_" + modelData.page
+                        Layout.fillWidth: true
+                        implicitHeight: 42
                         hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: aboutDialog.open()
-                        onContainsMouseChanged: {
-                            if (containsMouse) {
-                                var p = aboutButton.mapToItem(overlayLayer, aboutButton.width, aboutButton.height / 2)
-                                root.hoveredNavItem = aboutButton
-                                root.hoveredNavTipKey = "nav.about"
-                                root.hoveredNavText = lm.strings["nav.about"] || "About"
-                                root.hoveredNavCenterX = p.x
-                                root.hoveredNavCenterY = p.y
-                            } else if (root.hoveredNavItem === aboutButton) {
-                                root.hoveredNavItem = null
-                                root.hoveredNavTipKey = ""
-                                root.hoveredNavText = ""
+                        Accessible.name: lm.strings[modelData.tipKey]
+                        Accessible.role: Accessible.PageTab
+                        Accessible.selected: root.currentPage === modelData.page
+                        onClicked: root.openPage(modelData.page)
+                        background: Rectangle {
+                            radius: 4
+                            color: root.currentPage === navButton.modelData.page ? root.theme.accentDim
+                                 : navButton.hovered ? root.theme.bgCardHover : "transparent"
+                            border.width: navButton.activeFocus ? 1 : 0
+                            border.color: root.theme.accent
+                            Rectangle {
+                                anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                                width: 3; height: 17; radius: 2
+                                color: root.theme.accent
+                                visible: root.currentPage === navButton.modelData.page
+                            }
+                        }
+                        contentItem: RowLayout {
+                            spacing: 11
+                            AppIcon { name: navButton.modelData.icon; Layout.preferredWidth: 18; Layout.preferredHeight: 18; iconColor: root.theme.textPrimary }
+                            Text {
+                                Layout.fillWidth: true
+                                text: lm.strings[navButton.modelData.tipKey]
+                                color: root.theme.textPrimary
+                                font { family: uiState.fontFamily; pixelSize: 14; weight: root.currentPage === navButton.modelData.page ? Font.DemiBold : Font.Normal }
+                                elide: Text.ElideRight
                             }
                         }
                     }
+                }
+                Item { Layout.fillHeight: true }
+                Button {
+                    id: appSettingsNav
+                    objectName: "navigation_4"
+                    Layout.fillWidth: true
+                    implicitHeight: 42
+                    text: s["ui.app_settings"]
+                    font { family: uiState.fontFamily; pixelSize: 14 }
+                    flat: true
+                    onClicked: root.openPage(4)
+                    background: Rectangle {
+                        radius: 4
+                        color: root.currentPage === 4 ? root.theme.accentDim
+                             : appSettingsNav.hovered ? root.theme.bgCardHover : "transparent"
+                        border.width: appSettingsNav.activeFocus ? 1 : 0
+                        border.color: root.theme.accent
+                        Rectangle {
+                            anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                            width: 3; height: 17; radius: 2
+                            color: root.theme.accent
+                            visible: root.currentPage === 4
+                        }
+                    }
+                }
+                Button {
+                    Layout.fillWidth: true
+                    implicitHeight: 36
+                    text: s["nav.about"]
+                    font { family: uiState.fontFamily; pixelSize: 12 }
+                    flat: true
+                    onClicked: aboutDialog.open()
+                }
+                Text {
+                    Layout.leftMargin: 12
+                    Layout.bottomMargin: 4
+                    text: "Mouser " + root.versionLabel
+                    font { family: uiState.fontFamily; pixelSize: 12 }
+                    color: root.theme.textSecondary
                 }
             }
+            Rectangle { anchors { right: parent.right; top: parent.top; bottom: parent.bottom } width: 1; color: root.theme.border }
         }
-
         StackLayout {
             id: contentStack
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: root.currentPage
-
-            MousePage {
-                id: mousePageView
-            }
+            MousePage { id: mousePageView }
+            Loader { active: root.currentPage === 1 || item; source: "ScrollPage.qml" }
+            Loader { active: (root.currentPage === 2 || item) && backend.hapticSupported; source: "HapticPage.qml" }
+            Loader { active: (root.currentPage === 3 || item) && backend.deviceHasActionsRing && backend.actionsRingActive; source: "ActionsRingConfig.qml" }
             Loader {
-                active: root.currentPage === 1 || item
-                source: "ScrollPage.qml"
-            }
-            Loader {
-                active: (root.currentPage === 2 || item) && backend.hapticSupported
-                source: "HapticPage.qml"
-            }
-            Loader {
-                active: (root.currentPage === 3 || item) && backend.deviceHasActionsRing && backend.actionsRingActive
-                source: "ActionsRingConfig.qml"
-            }
-        }
-    }
-
-    Item {
-        id: overlayLayer
-        anchors.fill: parent
-        z: 999
-
-        Rectangle {
-            id: navTooltip
-            x: root.hoveredNavCenterX + 10
-            y: Math.max(8, Math.min(root.height - height - 8, root.hoveredNavCenterY - height / 2))
-            visible: root.hoveredNavItem !== null
-            opacity: visible ? 1 : 0
-            radius: 10
-            color: root.theme.tooltipBg
-            border.width: 1
-            border.color: Qt.rgba(1, 1, 1, root.darkMode ? 0.06 : 0.12)
-            width: navTooltipText.implicitWidth + 22
-            height: navTooltipText.implicitHeight + 14
-
-            Behavior on opacity { NumberAnimation { duration: 120 } }
-
-            Text {
-                id: navTooltipText
-                anchors.centerIn: parent
-                text: root.hoveredNavTipKey
-                      ? (lm.strings[root.hoveredNavTipKey] || root.hoveredNavTipKey)
-                      : root.hoveredNavText
-                font {
-                    family: uiState.fontFamily
-                    pixelSize: 12
-                }
-                color: root.theme.tooltipText
+                active: root.currentPage === 4 || item
+                sourceComponent: Component { ScrollPage { applicationSettings: true } }
             }
         }
     }

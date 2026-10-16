@@ -6,6 +6,7 @@ import "Theme.js" as Theme
 
 Item {
     id: scrollPage
+    property bool applicationSettings: false
     readonly property var theme: Theme.palette(uiState.darkMode)
 
     // Reactive shortcut — all s["key"] bindings update when lm.languageChanged fires
@@ -88,7 +89,7 @@ Item {
                     spacing: 4
 
                     Text {
-                        text: s["scroll.title"]
+                        text: applicationSettings ? s["ui.app_settings"] : s["ui.pointer_scroll"]
                         font {
                             family: uiState.fontFamily
                             pixelSize: 24
@@ -98,7 +99,7 @@ Item {
                     }
 
                     Text {
-                        text: s["scroll.subtitle"]
+                        text: applicationSettings ? s["ui.app_settings_hint"] : s["ui.pointer_scroll_hint"]
                         font {
                             family: uiState.fontFamily
                             pixelSize: 13
@@ -120,7 +121,8 @@ Item {
             // ── DPI / Pointer Speed ───────────────────────────────
             Rectangle {
                 id: dpiCard
-                visible: backend.hidFeaturesReady
+                objectName: "pointerSettingsSection"
+                visible: !scrollPage.applicationSettings && (backend.hidFeaturesReady)
                 width: parent.width - 72
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: dpiContent.implicitHeight + 40
@@ -296,7 +298,7 @@ Item {
 
             // ── Scroll Wheel Mode ─────────────────────────────────
             Rectangle {
-                visible: backend.smartShiftSupported && backend.deviceHasSmartShift
+                visible: !scrollPage.applicationSettings && (backend.smartShiftSupported && backend.deviceHasSmartShift)
                 width: parent.width - 72
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: smartShiftContent.implicitHeight + 40
@@ -597,6 +599,7 @@ Item {
 
             // ── Appearance ────────────────────────────────────────
             Rectangle {
+                visible: scrollPage.applicationSettings
                 width: parent.width - 72
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: appearanceContent.implicitHeight + 40
@@ -607,6 +610,7 @@ Item {
 
                 Column {
                     id: appearanceContent
+                    objectName: "appearanceSettingsSection"
                     anchors {
                         left: parent.left
                         right: parent.right
@@ -692,6 +696,7 @@ Item {
 
             // ── Language ──────────────────────────────────────────
             Rectangle {
+                visible: scrollPage.applicationSettings
                 width: parent.width - 72
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: languageContent.implicitHeight + 40
@@ -790,7 +795,7 @@ Item {
 
             // ── Startup ───────────────────────────────────────────
             Rectangle {
-                visible: backend.supportsStartAtLogin
+                visible: scrollPage.applicationSettings && (backend.supportsStartAtLogin)
                 width: parent.width - 72
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: startupContent.implicitHeight + 40
@@ -1026,6 +1031,7 @@ Item {
 
             // ── Screenshots ───────────────────────────────────────
             Rectangle {
+                visible: scrollPage.applicationSettings
                 width: parent.width - 72
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: screenshotContent.implicitHeight + 40
@@ -1179,6 +1185,7 @@ Item {
 
             // ── Scroll Direction ──────────────────────────────────
             Rectangle {
+                visible: !scrollPage.applicationSettings
                 width: parent.width - 72
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: scrollContent.implicitHeight + 40
@@ -1340,6 +1347,7 @@ Item {
 
             // ── DPI note ──────────────────────────────────────────
             Rectangle {
+                visible: !scrollPage.applicationSettings
                 width: parent.width - 72
                 anchors.horizontalCenter: parent.horizontalCenter
                 height: noteRow.implicitHeight + 28

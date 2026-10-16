@@ -1,0 +1,226 @@
+"""Real QML workflow coverage using fake hardware and an in-memory config."""
+from pathlib import Path
+import os
+import subprocess
+import sys
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class SettingsUiTests(unittest.TestCase):
+    def test_settings_workflow_preserves_unrelated_values(self):
+        result = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve()), "--probe"],
+            cwd=ROOT, text=True, encoding="utf-8", errors="replace",
+            env={**os.environ, "QT_QPA_PLATFORM": "offscreen", "QT_QUICK_BACKEND": "software"},
+            capture_output=True, timeout=60,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('"qml_warnings": []', result.stdout)
+
+
+def probe():
+    import copy
+    import json
+    from types import SimpleNamespace
+    from unittest.mock import Mock, patch
+    sys.path.insert(0, str(ROOT))
+    from PySide6.QtCore import QObject, Property, QUrl, Qt, QMetaObject, Q_ARG
+    from PySide6.QtGui import QPixmap, QFontDatabase, QColor, QPainter
+    from PySide6.QtSvg import QSvgRenderer
+    from PySide6.QtQuick import QQuickImageProvider, QQuickItem
+    from PySide6.QtWidgets import QApplication
+    from PySide6.QtQml import QQmlApplicationEngine
+    from PySide6.QtQuickControls2 import QQuickStyle
+    from PySide6.QtTest import QTest
+    from core.config import DEFAULT_CONFIG
+    from core.version import APP_VERSION
+    from tests.test_backend import _FakeEngine
+    from ui.backend import Backend
+    from ui.locale_manager import LocaleManager
+
+    class IconProvider(QQuickImageProvider):
+        def __init__(self): super().__init__(QQuickImageProvider.ImageType.Pixmap)
+        def requestPixmap(self, icon_id, size, requested_size):
+            from urllib.parse import parse_qs
+            name, _, query = icon_id.partition("?")
+            pixmap = QPixmap(24, 24)
+            pixmap.fill(Qt.GlobalColor.transparent)
+            svg = ROOT / "images/icons" / (name + ".svg")
+            if svg.is_file():
+                painter = QPainter(pixmap)
+                QSvgRenderer(str(svg)).render(painter)
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+                painter.fillRect(pixmap.rect(), QColor(parse_qs(query).get("color", ["#242424"])[0]))
+                painter.end()
+            if size is not None:
+                size.setWidth(24); size.setHeight(24)
+            return pixmap
+
+    class UiState(QObject):
+        @Property(bool, constant=True)
+        def darkMode(self): return os.environ.get("MOUSER_UI_DARK") == "1"
+        @Property(bool, constant=True)
+        def systemDarkMode(self): return self.darkMode
+        @Property(str, constant=True)
+        def fontFamily(self): return "Segoe UI"
+        @Property(str, constant=True)
+        def appearanceMode(self): return "dark" if self.darkMode else "light"
+
+    QQuickStyle.setStyle("Material")
+    app = QApplication(["settings-test", "-platform", "offscreen"])
+    # Qt's Windows offscreen plugin starts without the native font database.
+    if sys.platform == "win32" and not QFontDatabase.families():
+        for font in ("segoeui.ttf", "msyh.ttc"):
+            QFontDatabase.addApplicationFont(str(Path(os.environ["WINDIR"]) / "Fonts" / font))
+    cfg = copy.deepcopy(DEFAULT_CONFIG)
+    cfg["settings"]["check_for_updates"] = False
+    cfg["settings"]["language"] = "zh_CN"
+    cfg["profiles"]["editor_test"] = {"label": "Custom editor", "apps": ["editor_test"],
+                                      "mappings": copy.deepcopy(cfg["profiles"]["default"]["mappings"])}
+    device = SimpleNamespace(key="mx_master_4", display_name="MX Master 4", ui_layout="mx_master_4",
+        dpi_min=200, dpi_max=8000, supported_buttons=("middle", "gesture", "xbutton1", "xbutton2",
+                                                     "mode_shift", "actions_ring", "hscroll_left", "hscroll_right"))
+    fake = _FakeEngine(device_connected=True, connected_device=device, hid_features_ready=True)
+    fake.haptic_supported = True
+    fake.smart_shift_force_supported = False
+    fake.force_sensing_supported = True
+    fake.force_sensing_range = (0, 255, 128)
+    fake.cfg = cfg
+    fake.enabled = True
+    for name in ("play_screen_switch_haptic", "reload_mappings", "set_haptic_level", "play_haptic_waveform"):
+        setattr(fake, name, Mock())
+    lm = LocaleManager("zh_CN")
+    with patch("ui.backend.load_config", return_value=cfg), patch("ui.backend.save_config") as save, \
+         patch("core.config.save_config") as core_save, \
+         patch("ui.backend.supports_login_startup", return_value=False), \
+         patch.object(Backend, "beginShortcutCapture"), patch.object(Backend, "endShortcutCapture"), \
+         patch.object(Backend, "_consumeUpdateResultMarker"), patch.object(Backend, "_cleanupStaleUpdatePreparation"):
+        backend = Backend(engine=fake, root_dir=str(ROOT), locale_manager=lm)
+        backend._update_timer.stop()
+        backend._screen_haptic_timer.stop()
+        state = UiState()
+        engine = QQmlApplicationEngine()
+        engine.addImageProvider("appicons", IconProvider())
+        engine.addImageProvider("systemicons", IconProvider())
+        warnings = []
+        engine.warnings.connect(lambda messages: warnings.extend(m.toString() for m in messages))
+        context = engine.rootContext()
+        for key, value in {"backend": backend, "lm": lm, "uiState": state, "launchHidden": False,
+                           "appVersion": APP_VERSION, "appBuildMode": "source", "appCommit": "test",
+                           "appLaunchPath": "test"}.items():
+            context.setContextProperty(key, value)
+        engine.load(QUrl.fromLocalFile(str(ROOT / "ui/qml/Main.qml")))
+        assert engine.rootObjects(), warnings
+        window = engine.rootObjects()[0]
+        def settle():
+            app.processEvents(); QTest.qWait(60); app.processEvents()
+        def objects():
+            pending, seen, result = [window, window.contentItem()], set(), []
+            while pending:
+                obj = pending.pop()
+                if id(obj) in seen:
+                    continue
+                seen.add(id(obj)); result.append(obj)
+                pending.extend(obj.children())
+                if isinstance(obj, QQuickItem):
+                    pending.extend(obj.childItems())
+            return result
+        def find(name):
+            matches = [o for o in objects() if o.objectName() == name]
+            assert matches, (name, [o.objectName() for o in objects() if o.objectName()])
+            return matches[-1]
+        def invoke(obj, method, value):
+            assert QMetaObject.invokeMethod(obj, method, Q_ARG("QVariant", value)), method
+            settle()
+        def activate(combo, index):
+            combo.setProperty("currentIndex", index)
+            combo.activated.emit(index)
+            settle()
+        def toggle(control):
+            assert control.property("enabled"), control.objectName()
+            previous = control.property("checked")
+            control.forceActiveFocus()
+            QTest.keyClick(window, Qt.Key.Key_Space)
+            settle()
+            assert control.property("checked") != previous, control.objectName()
+        settle()
+        mouse = next(o for o in window.findChildren(QObject) if o.metaObject().className().startswith("MousePage"))
+        before = copy.deepcopy(cfg)
+        for page in (0, 1, 2, 3, 4, 0):
+            window.setProperty("currentPage", page); settle()
+        assert cfg == before, "Opening pages must not write settings"
+        save.assert_not_called(); core_save.assert_not_called()
+        window.setProperty("currentPage", 1); settle()
+        def visible(name): return any(o.property("visible") for o in window.findChildren(QObject) if o.objectName() == name)
+        assert visible("pointerSettingsSection") and not visible("appearanceSettingsSection")
+        window.setProperty("currentPage", 4); settle()
+        assert not visible("pointerSettingsSection") and visible("appearanceSettingsSection")
+        window.setProperty("currentPage", 0); settle()
+        invoke(mouse, "selectButton", "middle")
+        combo = find("buttonActionCombo")
+        actions = mouse.property("availableButtonActions").toVariant()
+        idx = next(i for i, row in enumerate(actions) if row["id"] == "ctrl_left_click")
+        activate(combo, idx)
+        assert cfg["profiles"]["default"]["mappings"]["middle"] == "ctrl_left_click"
+        assert cfg["profiles"]["editor_test"] == before["profiles"]["editor_test"]
+        custom_idx = next(i for i, row in enumerate(actions) if row["id"] == "__custom__")
+        activate(combo, custom_idx)
+        dialog = find("shortcutCaptureDialog")
+        assert dialog.property("visible")
+        dialog.captured.emit("ctrl+alt+d")
+        QMetaObject.invokeMethod(dialog, "close"); settle()
+        assert cfg["profiles"]["default"]["mappings"]["middle"] == "custom:ctrl+alt+d"
+        gesture_idx = next(i for i, row in enumerate(actions) if row["id"] == "gesture_swipe")
+        activate(combo, gesture_idx)
+        assert find("gestureButtonEditor").property("visible")
+        backend.setProfileMapping("default", "middle", "cycle_dpi"); settle()
+        assert find("dpiPresetEditor").property("visible")
+        backend.setProfileMapping("default", "middle", "ctrl_left_click"); settle()
+        toggle(find("selectedButtonHapticSwitch"))
+        expected_middle = "middle" in cfg["settings"]["button_haptic"]
+        window.setProperty("currentPage", 2); settle()
+        assert find("buttonHaptic_middle").property("checked") == expected_middle
+        keys_before = [r["key"] for r in backend.hapticButtonRows]
+        toggle(find("buttonHaptic_middle"))
+        assert [r["key"] for r in backend.hapticButtonRows] == keys_before
+        assert ("middle" in cfg["settings"]["button_haptic"]) != expected_middle
+        assert not any(r["key"].startswith("hscroll") for r in backend.hapticButtonRows)
+        toggle(find("hapticEnableSwitch"))
+        assert not find("buttonHaptic_middle").property("enabled")
+        assert not find("hapticTestButton").property("enabled")
+        toggle(find("hapticEnableSwitch"))
+        haptic = next(o for o in window.findChildren(QObject) if o.metaObject().className().startswith("HapticPage"))
+        haptic.setProperty("advancedExpanded", True); settle()
+        toggle(find("hapticDedupSwitch"))
+        assert cfg["settings"]["haptic_dedup"] != before["settings"]["haptic_dedup"]
+        changed_settings = {k for k in cfg["settings"] if cfg["settings"][k] != before["settings"].get(k)}
+        assert changed_settings <= {"button_haptic", "haptic_dedup"}, changed_settings
+        window.setProperty("currentPage", 0); settle()
+        assert find("selectedButtonHapticSwitch").property("checked") == ("middle" in cfg["settings"]["button_haptic"])
+        for lang in ("en", "zh_TW", "zh_CN"):
+            lm.setLanguage(lang); settle()
+            assert lm.trButton("Middle button") in [o.property("text") for o in objects()]
+        capture = os.environ.get("MOUSER_UI_CAPTURE_DIR")
+        if capture:
+            output = Path(capture); output.mkdir(parents=True, exist_ok=True)
+            haptic.setProperty("advancedExpanded", False)
+            QTest.qWait(2100)
+            for page, name in ((0, "buttons"), (2, "haptics"), (4, "app-settings")):
+                window.setProperty("currentPage", page); settle()
+                assert window.grabWindow().save(str(output / (name + ".png")))
+        for width in (1040, 1240, 1500):
+            window.setWidth(width); settle()
+            window.setProperty("currentPage", 0); settle()
+            assert find("mousePreview").property("width") > 200
+            assert find("buttonEditor").property("width") >= 300
+        assert not warnings, warnings
+        print(json.dumps({"qml_warnings": warnings, "page_navigation": 5, "profile_isolation": True,
+                          "shared_haptic_controls": True, "opening_pages_preserves_config": True}))
+        window.deleteLater(); app.processEvents()
+
+
+if __name__ == "__main__":
+    if "--probe" in sys.argv: probe()
+    else: unittest.main()

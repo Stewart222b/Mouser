@@ -70,6 +70,7 @@ Item {
     // ── Glow ring ─────────────────────────────────────────────
     Rectangle {
         id: glow
+        visible: isSelected || hotspot.activeFocus
         x: cx - width / 2
         y: cy - height / 2
         width: 30; height: 30; radius: 15
@@ -77,19 +78,14 @@ Item {
         border.width: isSelected || hotspot.activeFocus ? 2 : 1
         border.color: isSelected || hotspot.activeFocus
                       ? theme.accent
-                      : Qt.rgba(0, 0.83, 0.67, 0.3)
+                      : Theme.alpha(theme.accent, 0.3)
         opacity: isSelected || isHovered || hotspot.activeFocus ? 1 : 0.6
 
         Behavior on opacity { NumberAnimation { duration: 200 } }
         Behavior on border.width { NumberAnimation { duration: 150 } }
 
         // Pulse animation when selected
-        SequentialAnimation on scale {
-            loops: Animation.Infinite
-            running: isSelected
-            NumberAnimation { from: 1.0; to: 1.25; duration: 800; easing.type: Easing.InOutQuad }
-            NumberAnimation { from: 1.25; to: 1.0; duration: 800; easing.type: Easing.InOutQuad }
-        }
+
     }
 
     // ── Dot ───────────────────────────────────────────────────
@@ -97,8 +93,8 @@ Item {
         id: dot
         x: cx - width / 2
         y: cy - height / 2
-        width: 16; height: 16; radius: 8
-        color: isSelected ? theme.accentHover : theme.accent
+        width: 12; height: 12; radius: 6
+        color: isSelected ? theme.accent : theme.textSecondary
         border.width: 2
         border.color: hotspot.activeFocus ? theme.textPrimary : Qt.rgba(0, 0, 0, 0.3)
 
@@ -121,14 +117,15 @@ Item {
     // ── Connecting line ───────────────────────────────────────
     Canvas {
         id: lineCanvas
+        visible: isSelected || isHovered || hotspot.activeFocus
         anchors.fill: parent
         z: 0
         onPaint: {
             var ctx = getContext("2d")
             ctx.clearRect(0, 0, width, height)
-            ctx.strokeStyle = isSelected ? theme.accent : Qt.rgba(0, 0.83, 0.67, 0.35)
+            ctx.strokeStyle = isSelected ? theme.accent : Theme.alpha(theme.accent, 0.35)
             ctx.lineWidth = 1
-            ctx.setLineDash([4, 3])
+            ctx.setLineDash([])
             ctx.beginPath()
             ctx.moveTo(cx, cy)
             ctx.lineTo(lineEndX, lineEndY)
@@ -150,19 +147,16 @@ Item {
     // ── Annotation label ──────────────────────────────────────
     Rectangle {
         id: labelBg
+        visible: isSelected || isHovered || hotspot.activeFocus
         z: 2
         x: labelX
         y: labelY
         width: labelWidth
         height: labelHeight
-        radius: 8
-        color: isSelected
-               ? (uiState.darkMode
-                  ? Qt.rgba(0, 0.83, 0.67, 0.12)
-                  : Qt.rgba(0.82, 0.97, 0.93, 0.9))
-                          : uiState.darkMode ? Qt.rgba(0, 0, 0, 0.35) : Qt.rgba(1, 1, 1, 0.92)
+        radius: 4
+        color: isSelected ? theme.accentDim : theme.bgCard
         border.width: isSelected || hotspot.activeFocus ? 1 : 0
-        border.color: Qt.rgba(0, 0.83, 0.67, 0.3)
+        border.color: Theme.alpha(theme.accent, 0.3)
 
         Behavior on color { ColorAnimation { duration: 200 } }
 
@@ -202,9 +196,10 @@ Item {
     // ── Small dot at the end of the line ──────────────────────
     Rectangle {
         z: 1
+        visible: isSelected || isHovered || hotspot.activeFocus
         x: lineEndX - 3
         y: lineEndY - 3
         width: 6; height: 6; radius: 3
-        color: isSelected ? theme.accent : Qt.rgba(0, 0.83, 0.67, 0.5)
+        color: isSelected ? theme.accent : Theme.alpha(theme.accent, 0.5)
     }
 }
