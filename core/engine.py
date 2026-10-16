@@ -519,7 +519,9 @@ class Engine:
                         if (action_haptic_enabled(self.cfg, action_id)
                                 or button_haptic_enabled(self.cfg, btn_key)):
                             wf = 3 if action_id == "cycle_dpi" else 1
-                            self._play_haptic_async(wf)
+                            # OS presses (including native middle clicks) do not
+                            # wake the HID reader; avoid waiting for its read.
+                            self._play_haptic_async(wf, immediate=True)
                     self._dispatch_action(action_id, btn_key)
             except Exception as exc:
                 print(f"[Engine] _make_handler EXCEPTION for {action_id}: {exc}")

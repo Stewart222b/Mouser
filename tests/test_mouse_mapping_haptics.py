@@ -12,10 +12,17 @@ class MouseMappingHapticTests(unittest.TestCase):
     def make_engine(self, enabled=True, mapping="mouse_back_click"):
         bindings = {}
         class Hook(_FakeMouseHook):
+            def __init__(self):
+                super().__init__()
+                self.blocked_events = set()
+
+            def block(self, name):
+                self.blocked_events.add(name)
+
             def register(self, name, callback):
                 bindings[name] = callback
         cfg = copy.deepcopy(DEFAULT_CONFIG)
-        cfg["settings"]["button_haptic"] = ["xbutton1", "xbutton2"] if enabled else []
+        cfg["settings"]["button_haptic"] = ["middle", "xbutton1", "xbutton2"] if enabled else []
         cfg["profiles"]["default"]["mappings"].update(xbutton1=mapping, xbutton2="mouse_forward_click")
         with (patch("core.engine.MouseHook", Hook),
               patch("core.engine.AppDetector", _FakeAppDetector),
@@ -55,7 +62,28 @@ class MouseMappingHapticTests(unittest.TestCase):
         with patch.object(engine, "_play_haptic_async") as haptic, patch("core.engine.inject_mouse_down") as down:
             bindings["xbutton1_down"](SimpleNamespace(event_type="xbutton1_down"))
         down.assert_not_called()
-        haptic.assert_called_once()
+        haptic.assert_called_once_with(1, immediate=True)
+
+    def test_middle_press_sends_directly_without_blocking_native_click(self):
+        engine, bindings = self.make_engine()
+        device = Mock(haptic_supported=True)
+        engine.hook._hid_gesture = device
+        with patch("core.engine.inject_mouse_down") as down, patch("core.engine.inject_mouse_up") as up:
+            bindings["middle_down"](SimpleNamespace(event_type="middle_down"))
+        device.play_haptic_immediate.assert_called_once_with(1)
+        device.queue_haptic_waveform.assert_not_called()
+        down.assert_not_called()
+        up.assert_not_called()
+        self.assertNotIn("middle_down", engine.hook.blocked_events)
+        self.assertNotIn("middle_up", engine.hook.blocked_events)
+        self.assertNotIn("middle_up", bindings)
+
+    def test_middle_haptic_switch_off_leaves_native_click_unobserved(self):
+        engine, bindings = self.make_engine(enabled=False)
+        self.assertNotIn("middle_down", bindings)
+        self.assertNotIn("middle_up", bindings)
+        self.assertNotIn("middle_down", engine.hook.blocked_events)
+        self.assertNotIn("middle_up", engine.hook.blocked_events)
 
     def test_disabled_engine_does_not_inject_or_vibrate(self):
         engine, bindings = self.make_engine()
