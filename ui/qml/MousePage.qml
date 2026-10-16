@@ -886,6 +886,7 @@ Item {
 
                                 WheelSafeSlider {
                                     id: gestureThresholdSlider
+                                    objectName: "nativeGestureThresholdSlider"
                                     visible: swipeTapActionId === "none"
                                     width: parent.width
                                     from: 20
@@ -895,22 +896,7 @@ Item {
                                     accentColor: theme.accent
                                     accentDimColor: theme.accentDim
                                     trackColor: theme.border
-                                    onMoved: gestureThresholdSave.restart()
-                                    onPressedChanged: {
-                                        if (!pressed) {
-                                            gestureThresholdSave.stop()
-                                            backend.setGestureThreshold(
-                                                Math.round(value / 5.0) * 5)
-                                        }
-                                    }
-                                }
-
-                                Timer {
-                                    id: gestureThresholdSave
-                                    interval: 250
-                                    repeat: false
-                                    onTriggered: backend.setGestureThreshold(
-                                        Math.round(gestureThresholdSlider.value / 5.0) * 5)
+                                    onCommitted: function(value) { backend.setGestureThreshold(Math.round(value / 5.0) * 5) }
                                 }
 
                                 Text {
@@ -1184,16 +1170,14 @@ Item {
                                 }
                                 WheelSafeSlider {
                                     id: gsThreshold
+                                    objectName: "gestureThresholdSlider"
                                     width: parent.width
                                     from: 20; to: 400; stepSize: 5
                                     value: backend.gestureThreshold
                                     accentColor: theme.accent
                                     accentDimColor: theme.accentDim
                                     trackColor: theme.border
-                                    onPressedChanged: {
-                                        if (!pressed)
-                                            backend.setGestureThreshold(Math.round(value / 5.0) * 5)
-                                    }
+                                    onCommitted: function(value) { backend.setGestureThreshold(Math.round(value / 5.0) * 5) }
                                 }
 
                                 Text {
@@ -1345,6 +1329,7 @@ Item {
 
                                         WheelSafeSlider {
                                             id: dpiPresetSlider
+                                            objectName: "dpiPresetSlider"
                                             width: parent.width
                                             from: backend.deviceDpiMin
                                             to: backend.deviceDpiMax
@@ -1357,7 +1342,7 @@ Item {
                                             accentColor: dpiPresetsCard.slotColors[dpiPresetsCard.activeSlot]
                                             accentDimColor: Qt.rgba(0.5, 0.5, 0.5, 0.12)
                                             trackColor: theme.border
-                                            onMoved: {
+                                            onCommitted: function(value) {
                                                 backend.setDpiPreset(dpiPresetsCard.activeSlot, Math.round(value))
                                             }
                                         }

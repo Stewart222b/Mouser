@@ -19,6 +19,15 @@ Item {
     }
 
     signal moved()
+    signal committed(real newValue)
+    property bool pendingCommit: false
+    onMoved: { if (pressed) pendingCommit = true }
+    onPressedChanged: {
+        if (!pressed && pendingCommit) {
+            pendingCommit = false
+            committed(value)
+        }
+    }
 
     implicitHeight: 28
     implicitWidth: 240

@@ -641,6 +641,18 @@ class WheelInvertConnectThreadingTests(unittest.TestCase):
             engine._setup_hooks()
             apply_mock.assert_called_once_with()
 
+    def test_ui_timing_reload_preserves_wheel_and_updates_local_gestures(self):
+        engine = self._make_engine()
+        cfg = copy.deepcopy(engine.cfg)
+        cfg["settings"]["gesture_threshold"] = 95
+        with patch("core.engine.load_config", return_value=cfg), \
+             patch.object(engine, "_apply_wheel_invert_setting") as apply_mock:
+            engine.reload_mappings(defer_wheel_invert=True)
+            apply_mock.assert_not_called()
+            self.assertEqual(engine.hook._gesture_config["threshold"], 95)
+            engine.reload_mappings()
+            apply_mock.assert_called_once_with()
+
     def test_connect_defers_wheel_invert_off_listener_thread(self):
         engine = self._make_engine()
         engine.cfg["settings"]["invert_vscroll"] = True
@@ -762,6 +774,35 @@ class SettingsLatencyTests(unittest.TestCase):
             save.assert_not_called()
         self.assertEqual(engine.cfg, before)
         device.set_dpi.assert_called_once_with(2400)
+
+    def test_background_wheel_and_force_writes_preserve_newer_ui_preferences(self):
+        from core.engine import Engine
+        engine = Engine.__new__(Engine)
+        engine.cfg = copy.deepcopy(DEFAULT_CONFIG)
+        before = copy.deepcopy(engine.cfg)
+        device = Mock()
+        engine.hook = SimpleNamespace(_hid_gesture=device)
+        with patch("core.engine.save_config") as save:
+            engine.set_smart_shift("freespin", True, 41, 72, persist=False)
+            engine.set_force_sensitivity(192, persist=False)
+            save.assert_not_called()
+        self.assertEqual(engine.cfg, before)
+        device.set_smart_shift.assert_called_once_with("freespin", True, 41, 72)
+        device.set_force_sensing.assert_called_once_with(192)
+
+    def test_non_ui_wheel_and_force_callers_still_persist_by_default(self):
+        from core.engine import Engine
+        engine = Engine.__new__(Engine)
+        engine.cfg = copy.deepcopy(DEFAULT_CONFIG)
+        engine.hook = SimpleNamespace(_hid_gesture=Mock())
+        with patch("core.engine.save_config") as save:
+            engine.set_smart_shift("freespin", True, 41, 72)
+            engine.set_force_sensitivity(192)
+            self.assertEqual(save.call_count, 2)
+        settings = engine.cfg["settings"]
+        self.assertEqual((settings["smart_shift_mode"], settings["smart_shift_enabled"],
+                          settings["smart_shift_threshold"], settings["scroll_force"],
+                          settings["force_sensitivity"]), ("freespin", True, 41, 72, 192))
 
 
 if __name__ == "__main__":

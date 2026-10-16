@@ -171,6 +171,50 @@ class BackendDeviceLayoutTests(unittest.TestCase):
         engine.set_dpi.assert_called_once_with(2400, persist=False)
         self.assertEqual(backend.dpi, 2400)
 
+    def test_wheel_edits_apply_only_the_latest_combined_state(self):
+        backend, engine, workers, make_thread = self._haptic_backend_with_deferred_workers()
+        engine.set_smart_shift = Mock(return_value=True)
+        with patch("ui.backend.save_config") as save, patch("ui.backend.threading.Thread", side_effect=make_thread):
+            backend.setSmartShift("freespin")
+            backend.setSmartShiftEnabled(True)
+            backend.setSmartShiftThreshold(41)
+            backend.setScrollForce(72)
+            self.assertEqual((backend.smartShiftMode, backend.smartShiftEnabled,
+                              backend.smartShiftThreshold, backend.scrollForce),
+                             ("freespin", True, 41, 72))
+            expected = copy.deepcopy(backend._cfg)
+            engine.set_smart_shift.assert_not_called()
+            for worker in reversed(workers):
+                worker()
+            self.assertEqual(save.call_count, 4)
+        engine.set_smart_shift.assert_called_once_with("freespin", True, 41, 72, persist=False)
+        self.assertEqual(backend._cfg, expected)
+
+    def test_force_sensitivity_discards_stale_writes_without_resaving(self):
+        backend, engine, workers, make_thread = self._haptic_backend_with_deferred_workers()
+        engine.set_force_sensitivity = Mock(return_value=True)
+        with patch("ui.backend.save_config") as save, patch("ui.backend.threading.Thread", side_effect=make_thread):
+            backend.setForceSensitivity(64)
+            backend.setForceSensitivity(192)
+            self.assertEqual(backend.forceSensitivity, 192)
+            engine.set_force_sensitivity.assert_not_called()
+            workers[1]()
+            workers[0]()
+            self.assertEqual(save.call_count, 2)
+        engine.set_force_sensitivity.assert_called_once_with(192, persist=False)
+        self.assertEqual(backend.forceSensitivity, 192)
+
+    def test_gesture_and_ring_timing_skip_unrelated_wheel_io(self):
+        backend, engine, _, _ = self._haptic_backend_with_deferred_workers()
+        engine.reload_mappings = Mock()
+        with patch("ui.backend.save_config"):
+            backend.setGestureThreshold(95)
+            backend.setActionsRingHoldMs(340)
+        self.assertEqual(engine.reload_mappings.call_args_list,
+                         [call(defer_wheel_invert=True), call(defer_wheel_invert=True)])
+        self.assertEqual(backend.gestureThreshold, 95)
+        self.assertEqual(backend.actionsRingHoldMs, 340)
+
     def test_device_image_source_uses_encoded_file_url(self):
         backend = self._make_backend(root_dir="/tmp/Mouser Build")
 

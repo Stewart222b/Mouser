@@ -78,6 +78,8 @@ def probe():
     cfg = copy.deepcopy(DEFAULT_CONFIG)
     cfg["settings"]["check_for_updates"] = False
     cfg["settings"]["language"] = "zh_CN"
+    cfg["settings"]["dpi_presets"] = [400, 800, 1600, 3200]
+    cfg["settings"]["force_sensitivity"] = 128
     cfg["profiles"]["editor_test"] = {"label": "Custom editor", "apps": ["editor_test"],
                                       "mappings": copy.deepcopy(cfg["profiles"]["default"]["mappings"])}
     device = SimpleNamespace(key="mx_master_4", display_name="MX Master 4", ui_layout="mx_master_4",
@@ -91,7 +93,7 @@ def probe():
     fake.force_sensing_range = (0, 255, 128)
     fake.cfg = cfg
     fake.enabled = True
-    for name in ("play_screen_switch_haptic", "reload_mappings", "set_haptic_level", "play_haptic_waveform", "preview_haptic_level", "set_dpi", "set_smart_shift"):
+    for name in ("play_screen_switch_haptic", "reload_mappings", "set_haptic_level", "play_haptic_waveform", "preview_haptic_level", "set_dpi", "set_smart_shift", "set_force_sensitivity"):
         setattr(fake, name, Mock())
     haptic_events = []
     def apply_haptic(level, play=True):
@@ -155,6 +157,50 @@ def probe():
             QTest.keyClick(window, Qt.Key.Key_Space)
             settle()
             assert control.property("checked") != previous, control.objectName()
+        def reveal(control):
+            scroller = control.parentItem()
+            while scroller is not None and scroller.property("contentY") is None:
+                scroller = scroller.parentItem()
+            if scroller is not None:
+                center = control.mapToItem(scroller, QPointF(0, control.height() / 2))
+                target = scroller.property("contentY") + center.y() - scroller.height() / 2
+                maximum = max(0, scroller.property("contentHeight") - scroller.height())
+                scroller.setProperty("contentY", max(0, min(maximum, target)))
+                settle()
+        def drag_and_commit(control, read_value):
+            reveal(control)
+            assert control.property("visible") and control.property("enabled"), control.objectName()
+            value_before, saves_before = read_value(), save.call_count
+            start = control.mapToScene(QPointF(25, control.height() / 2)).toPoint()
+            end = control.mapToScene(QPointF(control.width() - 35, control.height() / 2)).toPoint()
+            QTest.mousePress(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start)
+            QTest.mouseMove(window, end); QTest.qWait(350); settle()
+            assert control.property("pressed"), control.objectName()
+            assert read_value() == value_before, control.objectName()
+            assert save.call_count == saves_before, control.objectName()
+            selected = round(control.property("value"))
+            QTest.mouseRelease(window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, end); settle()
+            assert read_value() == selected, (control.objectName(), read_value(), selected)
+            assert save.call_count == saves_before + 1, control.objectName()
+        def assert_gui_survives_device_wait(method, apply_setting):
+            started, release, finished = Event(), Event(), Event()
+            def slow_write(*args, **kwargs):
+                started.set()
+                try:
+                    release.wait(2)
+                finally:
+                    finished.set()
+            method.side_effect = slow_write
+            try:
+                apply_setting()
+                assert started.wait(1)
+                ticks = []
+                QTimer.singleShot(0, lambda: ticks.append(True)); settle()
+                assert ticks and not finished.is_set(), "Hardware I/O blocked the Qt event loop"
+            finally:
+                release.set()
+                assert finished.wait(1)
+                method.side_effect = None
         settle()
         mouse = next(o for o in window.findChildren(QObject) if o.metaObject().className().startswith("MousePage"))
         before = copy.deepcopy(cfg)
@@ -187,8 +233,14 @@ def probe():
         gesture_idx = next(i for i, row in enumerate(actions) if row["id"] == "gesture_swipe")
         activate(combo, gesture_idx)
         assert find("gestureButtonEditor").property("visible")
+        threshold_before = backend.gestureThreshold
+        drag_and_commit(find("gestureThresholdSlider"), lambda: backend.gestureThreshold)
+        backend.setGestureThreshold(threshold_before); settle()
         backend.setProfileMapping("default", "middle", "cycle_dpi"); settle()
         assert find("dpiPresetEditor").property("visible")
+        presets_before = backend.dpiPresets[:]
+        drag_and_commit(find("dpiPresetSlider"), lambda: backend.dpiPresets[0])
+        backend.setDpiPreset(0, presets_before[0]); settle()
         backend.setProfileMapping("default", "middle", action_id); settle()
         toggle(find("selectedButtonHapticSwitch"))
         expected_middle = "middle" in cfg["settings"]["button_haptic"]
@@ -228,6 +280,9 @@ def probe():
         haptic.setProperty("advancedExpanded", True); settle()
         toggle(find("hapticDedupSwitch"))
         assert cfg["settings"]["haptic_dedup"] != before["settings"]["haptic_dedup"]
+        force_before = backend.forceSensitivity
+        assert_gui_survives_device_wait(fake.set_force_sensitivity, lambda: backend.setForceSensitivity(192))
+        backend.setForceSensitivity(force_before); settle()
         changed_settings = {k for k in cfg["settings"] if cfg["settings"][k] != before["settings"].get(k)}
         assert changed_settings <= {"button_haptic", "haptic_dedup"}, changed_settings
         window.setProperty("currentPage", 0); settle()
@@ -286,6 +341,14 @@ def probe():
         toggle(find("smartShiftSwitch"))
         assert cfg["settings"]["smart_shift_enabled"] != device_before["settings"]["smart_shift_enabled"]
         toggle(find("smartShiftSwitch"))
+        if not backend.smartShiftEnabled:
+            backend.setSmartShiftEnabled(True); settle()
+        drag_and_commit(find("smartShiftThresholdSetting_slider"), lambda: backend.smartShiftThreshold)
+        drag_and_commit(find("wheelForceSetting_slider"), lambda: backend.scrollForce)
+        assert_gui_survives_device_wait(fake.set_smart_shift, lambda: backend.setScrollForce(60))
+        backend.setSmartShiftThreshold(device_before["settings"]["smart_shift_threshold"])
+        backend.setScrollForce(device_before["settings"]["scroll_force"])
+        backend.setSmartShiftEnabled(device_before["settings"]["smart_shift_enabled"]); settle()
         device_changed = {key for key in cfg["settings"] if cfg["settings"][key] != device_before["settings"].get(key)}
         assert device_changed == {"dpi"}, device_changed
         assert cfg["profiles"] == device_before["profiles"]
@@ -328,6 +391,7 @@ def probe():
         assert find("ringActionCombo").property("currentIndex") != ring_custom_index
         toggle(find("ringGlobalSwitch"))
         hold = find("ringHoldSetting_slider")
+        drag_and_commit(hold, lambda: backend.actionsRingHoldMs)
         hold.forceActiveFocus(); QTest.keyClick(window, Qt.Key.Key_Home); QTest.qWait(350)
         QTest.keyClick(window, Qt.Key.Key_Right); QTest.qWait(350); settle()
         assert cfg["settings"]["actions_ring_hold_ms"] == 110
@@ -429,7 +493,8 @@ def probe():
                           "shared_haptic_controls": True, "opening_pages_preserves_config": True,
                           "pointer_and_app_preferences": True, "ring_scope_and_custom_shortcuts": True,
                           "hotspot_outer_target_click": True, "wide_layout_and_restore": True,
-                          "haptic_selection_preview": True}))
+                          "haptic_selection_preview": True, "all_slider_release_commits": True,
+                          "wheel_and_force_gui_responsive_during_hardware_wait": True}))
         window.deleteLater(); app.processEvents()
 
 

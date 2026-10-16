@@ -1489,7 +1489,7 @@ class Engine:
         print("[Engine] No HID++ connection — DPI not applied")
         return False
 
-    def set_smart_shift(self, mode, smart_shift_enabled=False, threshold=25, scroll_force=50):
+    def set_smart_shift(self, mode, smart_shift_enabled=False, threshold=25, scroll_force=50, persist=True):
         """Send Smart Shift settings to device.
         mode: 'ratchet' or 'freespin' (fixed mode when smart_shift_enabled=False)
         smart_shift_enabled: True to enable auto SmartShift
@@ -1497,12 +1497,13 @@ class Engine:
         scroll_force: 1-100 ratchet firmness (% of max force, enhanced devices only)"""
         scroll_force = max(1, min(100, int(scroll_force)))
         print(f"[Engine] set_smart_shift({mode}, enabled={smart_shift_enabled}, threshold={threshold}, scroll_force={scroll_force}) called")
-        settings = self.cfg.setdefault("settings", {})
-        settings["smart_shift_mode"] = mode
-        settings["smart_shift_enabled"] = smart_shift_enabled
-        settings["smart_shift_threshold"] = threshold
-        settings["scroll_force"] = scroll_force
-        save_config(self.cfg)
+        if persist:
+            settings = self.cfg.setdefault("settings", {})
+            settings["smart_shift_mode"] = mode
+            settings["smart_shift_enabled"] = smart_shift_enabled
+            settings["smart_shift_threshold"] = threshold
+            settings["scroll_force"] = scroll_force
+            save_config(self.cfg)
         hg = self.hook._hid_gesture
         if hg:
             result = hg.set_smart_shift(mode, smart_shift_enabled, threshold, scroll_force)
@@ -1543,12 +1544,13 @@ class Engine:
         hg = self.hook._hid_gesture
         return getattr(hg, "force_sensing_range", None) if hg else None
 
-    def set_force_sensitivity(self, value):
-        """Send force sensitivity to the mouse and persist to config."""
+    def set_force_sensitivity(self, value, persist=True):
+        """Send force sensitivity; optionally persist for non-UI callers."""
         value = int(value)
-        settings = self.cfg.setdefault("settings", {})
-        settings["force_sensitivity"] = value
-        save_config(self.cfg)
+        if persist:
+            settings = self.cfg.setdefault("settings", {})
+            settings["force_sensitivity"] = value
+            save_config(self.cfg)
         hg = self.hook._hid_gesture
         if hg:
             return hg.set_force_sensing(value)
@@ -1609,16 +1611,18 @@ class Engine:
         hg = self.hook._hid_gesture
         return hg.smart_shift_force_supported if hg else False
 
-    def reload_mappings(self):
+    def reload_mappings(self, *, defer_wheel_invert=False):
         """
         Called by the UI when the user changes a mapping.
         Re-wire callbacks without tearing down the hook or HID++.
+        Gesture thresholds and ring timing do not change wheel inversion;
+        those UI edits can skip its potentially blocking device write.
         """
         with self._lock:
             self.cfg = load_config()
             self._current_profile = self.cfg.get("active_profile", "default")
             self.hook.reset_bindings()
-            self._setup_hooks()
+            self._setup_hooks(defer_wheel_invert=defer_wheel_invert)
             self._emit_debug(f"reload_mappings profile={self._current_profile}")
 
     def set_enabled(self, enabled):

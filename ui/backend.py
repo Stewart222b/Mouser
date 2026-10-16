@@ -311,6 +311,10 @@ class Backend(QObject):
         self._haptic_level_request = 0
         self._dpi_write_lock = threading.Lock()
         self._dpi_write_request = 0
+        self._smart_shift_write_lock = threading.Lock()
+        self._smart_shift_write_request = 0
+        self._force_write_lock = threading.Lock()
+        self._force_write_request = 0
         self._gesture_records = []
         self._gesture_active = False
         self._gesture_move_seen = False
@@ -693,7 +697,7 @@ class Backend(QObject):
         save_config(self._cfg)
         self.settingsChanged.emit()
         if self._engine:
-            self._engine.reload_mappings()
+            self._engine.reload_mappings(defer_wheel_invert=True)
 
     @Property(bool, notify=mappingsChanged)
     def actionsRingUseGlobal(self):
@@ -1787,14 +1791,22 @@ class Backend(QObject):
         if scroll_force is not None:
             settings["scroll_force"] = scroll_force
         save_config(self._cfg)
+        self.smartShiftChanged.emit()
+        self._smart_shift_write_request += 1
+        request = self._smart_shift_write_request
         if self._engine:
-            self._engine.set_smart_shift(
+            state = (
                 settings.get("smart_shift_mode", "ratchet"),
                 settings.get("smart_shift_enabled", False),
                 settings.get("smart_shift_threshold", 25),
                 settings.get("scroll_force", 50),
             )
-        self.smartShiftChanged.emit()
+            self._engine.cfg = self._cfg
+            def apply_smart_shift():
+                with self._smart_shift_write_lock:
+                    if request == self._smart_shift_write_request:
+                        self._engine.set_smart_shift(*state, persist=False)
+            threading.Thread(target=apply_smart_shift, daemon=True, name="SetSmartShift").start()
 
     @Slot(str)
     def setSmartShift(self, mode):
@@ -1897,10 +1909,16 @@ class Backend(QObject):
         self._cfg.setdefault("settings", {})["force_sensitivity"] = value
         save_config(self._cfg)
         self.forceSensingChanged.emit()
+        self._force_write_request += 1
+        request = self._force_write_request
         if self._engine:
-            import threading
+            self._engine.cfg = self._cfg
+            def apply_force_sensitivity():
+                with self._force_write_lock:
+                    if request == self._force_write_request:
+                        self._engine.set_force_sensitivity(value, persist=False)
             threading.Thread(
-                target=lambda: self._engine.set_force_sensitivity(value),
+                target=apply_force_sensitivity,
                 daemon=True, name="SetForceSensitivity"
             ).start()
 
@@ -1944,7 +1962,7 @@ class Backend(QObject):
         self._cfg.setdefault("settings", {})["gesture_threshold"] = snapped
         save_config(self._cfg)
         if self._engine:
-            self._engine.reload_mappings()
+            self._engine.reload_mappings(defer_wheel_invert=True)
         self.settingsChanged.emit()
 
     @Slot(str)
