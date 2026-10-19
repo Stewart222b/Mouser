@@ -565,17 +565,15 @@ Item {
     }
 
     ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: 28
+        objectName: "mouseSettingsContent"
+        readonly property real viewportWidth: mousePage.width
+        width: Math.max(0, Math.min(viewportWidth - 2 * Theme.pageGutter, Theme.pageMaximumWidth))
+        x: Math.max(Theme.pageGutter, (viewportWidth - width) / 2)
+        y: Theme.pageTopPadding
+        height: Math.max(0, parent.height - y - 28)
         spacing: 14
-        RowLayout {
-            Layout.fillWidth: true
-            Text {
-                text: s["ui.buttons"]
-                font { family: uiState.fontFamily; pixelSize: 24; weight: Font.DemiBold }
-                color: theme.textPrimary
-                Layout.fillWidth: true
-            }
+        SettingsPageHeader {
+            title: s["ui.buttons"]
         }
         RowLayout {
             Layout.fillWidth: true

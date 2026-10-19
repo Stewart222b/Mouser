@@ -1,6 +1,10 @@
 .pragma library
 
 var radius = 6
+var pageGutter = 32
+var pageMaximumWidth = 1280
+var pageTopPadding = 24
+var pageHeaderHeight = 52
 
 // Brand-asset colors are intentionally theme-independent: the sidebar
 // brand mark draws a pocket-sized echo of the macOS Dock tile, so it

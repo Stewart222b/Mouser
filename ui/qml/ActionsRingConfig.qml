@@ -41,13 +41,10 @@ Item {
         SettingsContent {
             objectName: "ringSettingsContent"
             viewportWidth: pageScroll.availableWidth
-            Item { width: 1; height: 28 }
-            Text {
-                text: "Actions Ring"
-                font { family: uiState.fontFamily; pixelSize: 24; weight: Font.DemiBold }
-                color: actionsRingConfig.theme.textPrimary
+            Item { width: 1; height: Theme.pageTopPadding }
+            SettingsPageHeader {
+                title: "Actions Ring"
             }
-            Item { width: 1; height: 20 }
             SettingRow {
                 width: parent.width
                 label: s["ring.scope_title"]

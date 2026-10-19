@@ -53,16 +53,9 @@ Item {
             objectName: "hapticSettingsContent"
             viewportWidth: pageScroll.availableWidth
             spacing: 0
-            Item { width: 1; height: 24 }
-            RowLayout {
-                width: parent.width
-                height: 52
-                Text {
-                    text: s["haptic.title"]
-                    font { family: uiState.fontFamily; pixelSize: 24; weight: Font.DemiBold }
-                    color: hapticPage.theme.textPrimary
-                    Layout.fillWidth: true
-                }
+            Item { width: 1; height: Theme.pageTopPadding }
+            SettingsPageHeader {
+                title: s["haptic.title"]
                 SettingsSwitch {
                     objectName: "hapticEnableSwitch"
                     text: s["haptic.enabled"]

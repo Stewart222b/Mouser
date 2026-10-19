@@ -501,9 +501,21 @@ def probe():
         ring_radii = []
         for width, height in ((1040, 620), (1240, 800), (1920, 1080), (2560, 1440), (1240, 800)):
             window.setWidth(width); window.setHeight(height); settle()
-            for page, content_name in content_names.items():
+            title_positions = []
+            for page, content_name in {0: "mouseSettingsContent", **content_names}.items():
                 window.setProperty("currentPage", page); settle()
                 content = find(content_name)
+                if page in content_names:
+                    scroller = content.parentItem()
+                    while scroller is not None and scroller.property("contentY") is None:
+                        scroller = scroller.parentItem()
+                    assert scroller is not None
+                    scroller.setProperty("contentY", 0); settle()
+                title = find("settingsPageTitle")
+                position = title.mapToScene(QPointF(0, 0))
+                title_positions.append((position.x(), position.y()))
+                assert title.height() == 52, (page, title.height())
+                assert title.property("font").pixelSize() == 24
                 viewport = content.property("viewportWidth")
                 assert abs(content.width() - min(viewport - 64, 1280)) < 1, (content_name, width, content.width())
                 assert abs(content.x() + content.width() / 2 - viewport / 2) < 1, (content_name, width, content.x())
@@ -520,6 +532,9 @@ def probe():
                         assert sector.y() >= 0 and sector.y() + sector.height() <= ring.height() + 1
                 elif page == 4:
                     assert find("appearanceCombo").width() <= 181
+            for position in title_positions[1:]:
+                assert abs(position[0] - title_positions[0][0]) < 1, (width, title_positions)
+                assert abs(position[1] - title_positions[0][1]) < 1, (width, title_positions)
         assert ring_radii[2] > ring_radii[1] > ring_radii[0], ring_radii
         assert abs(ring_radii[-1] - ring_radii[1]) < 1, ring_radii
         assert cfg == resize_before, "Maximize and restore must not write preferences"
@@ -554,6 +569,7 @@ def probe():
                           "shared_haptic_controls": True, "opening_pages_preserves_config": True,
                           "pointer_and_app_preferences": True, "ring_scope_and_custom_shortcuts": True,
                           "hotspot_outer_target_click": True, "wide_layout_and_restore": True,
+                          "page_title_alignment_across_five_pages": True,
                           "haptic_selection_preview": True, "all_slider_release_commits": True,
                           "wheel_and_force_gui_responsive_during_hardware_wait": True,
                           "global_device_status_states_and_sidebar_alignment": True}))

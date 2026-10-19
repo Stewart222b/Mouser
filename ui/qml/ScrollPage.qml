@@ -67,11 +67,9 @@ Item {
         SettingsContent {
             objectName: scrollPage.applicationSettings ? "appSettingsContent" : "pointerSettingsContent"
             viewportWidth: pageScroll.availableWidth
-            Item { width: 1; height: 28 }
-            Text {
-                text: scrollPage.applicationSettings ? s["ui.app_settings"] : s["ui.pointer_scroll"]
-                font { family: uiState.fontFamily; pixelSize: 24; weight: Font.DemiBold }
-                color: scrollPage.theme.textPrimary
+            Item { width: 1; height: Theme.pageTopPadding }
+            SettingsPageHeader {
+                title: scrollPage.applicationSettings ? s["ui.app_settings"] : s["ui.pointer_scroll"]
             }
             SettingsSection {
                 objectName: "pointerSettingsSection"
