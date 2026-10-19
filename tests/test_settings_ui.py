@@ -28,7 +28,7 @@ def probe():
     sys.path.insert(0, str(ROOT))
     from PySide6.QtCore import QObject, Property, QUrl, Qt, QMetaObject, Q_ARG, QPointF, QTimer
     from threading import Event
-    from PySide6.QtGui import QPixmap, QFontDatabase, QColor, QPainter
+    from PySide6.QtGui import QPixmap, QFontDatabase, QFontMetricsF, QColor, QPainter
     from PySide6.QtSvg import QSvgRenderer
     from PySide6.QtQuick import QQuickImageProvider, QQuickItem
     from PySide6.QtWidgets import QApplication
@@ -143,6 +143,22 @@ def probe():
             assert matches, (name, [o.objectName() for o in objects() if o.objectName()])
             visible_matches = [o for o in matches if o.property("visible")]
             return (visible_matches or matches)[-1]
+        def assert_navigation_alignment():
+            by_name = {obj.objectName(): obj for obj in objects() if obj.objectName()}
+            for page in range(6):
+                name = "navigation_" + str(page) if page < 5 else "aboutNavigation"
+                label_name = "navigationLabel_" + str(page) if page < 5 else "aboutNavigationLabel"
+                label = by_name[label_name]
+                icon = by_name[name + "_icon"]
+                background = by_name[name + "_background"]
+                ink = QFontMetricsF(label.property("font")).tightBoundingRect(label.property("text"))
+                ink_center = label.mapToScene(QPointF(
+                    0, label.property("baselineOffset") + ink.y() + ink.height() / 2
+                )).y()
+                icon_center = icon.mapToScene(QPointF(0, icon.height() / 2)).y()
+                background_center = background.mapToScene(QPointF(0, background.height() / 2)).y()
+                assert abs(ink_center - icon_center) < 0.1, (name, ink_center, icon_center)
+                assert abs(ink_center - background_center) < 0.1, (name, ink_center, background_center)
         def invoke(obj, method, value):
             assert QMetaObject.invokeMethod(obj, method, Q_ARG("QVariant", value)), method
             settle()
@@ -521,6 +537,7 @@ def probe():
             title_positions = []
             for page, content_name in {0: "mouseSettingsContent", **content_names}.items():
                 window.setProperty("currentPage", page); settle()
+                assert_navigation_alignment()
                 content = find(content_name)
                 if page in content_names:
                     scroller = content.parentItem()
@@ -603,6 +620,7 @@ def probe():
                           "hotspot_outer_target_click": True, "wide_layout_and_restore": True,
                           "page_title_alignment_across_five_pages": True,
                           "desktop_control_sizes_and_form_widths": True,
+                          "navigation_glyph_vertical_alignment": True,
                           "haptic_selection_preview": True, "all_slider_release_commits": True,
                           "wheel_and_force_gui_responsive_during_hardware_wait": True,
                           "global_device_status_states_and_sidebar_alignment": True}))

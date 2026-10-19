@@ -112,116 +112,39 @@ ApplicationWindow {
                 }
                 Repeater {
                     model: root.navModel
-                    Button {
-                        id: navButton
+                    SidebarNavigationButton {
                         enabled: !root.shortcutsBlocked
                         required property var modelData
                         objectName: "navigation_" + modelData.page
+                        labelObjectName: "navigationLabel_" + modelData.page
                         Layout.fillWidth: true
-                        implicitHeight: 42
-                        leftPadding: 12
-                        rightPadding: 12
-                        hoverEnabled: true
-                        Accessible.name: lm.strings[modelData.tipKey]
+                        text: lm.strings[modelData.tipKey]
+                        iconName: modelData.icon
+                        selected: root.currentPage === modelData.page
                         Accessible.role: Accessible.PageTab
-                        Accessible.selected: root.currentPage === modelData.page
                         onClicked: root.openPage(modelData.page)
-                        background: Rectangle {
-                            radius: 4
-                            color: root.currentPage === navButton.modelData.page ? root.theme.accentDim
-                                 : navButton.hovered ? root.theme.bgCardHover : "transparent"
-                            border.width: navButton.activeFocus ? 1 : 0
-                            border.color: root.theme.accent
-                            Rectangle {
-                                anchors { left: parent.left; verticalCenter: parent.verticalCenter }
-                                width: 3; height: 17; radius: 2
-                                color: root.theme.accent
-                                visible: root.currentPage === navButton.modelData.page
-                            }
-                        }
-                        contentItem: RowLayout {
-                            spacing: 11
-                            AppIcon { name: navButton.modelData.icon; Layout.preferredWidth: 18; Layout.preferredHeight: 18; iconColor: root.theme.textPrimary }
-                            Text {
-                                objectName: "navigationLabel_" + navButton.modelData.page
-                                Layout.fillWidth: true
-                                text: lm.strings[navButton.modelData.tipKey]
-                                color: root.theme.textPrimary
-                                font { family: uiState.fontFamily; pixelSize: 14; weight: root.currentPage === navButton.modelData.page ? Font.DemiBold : Font.Normal }
-                                elide: Text.ElideRight
-                            }
-                        }
                     }
                 }
                 Item { Layout.fillHeight: true }
-                Button {
-                    id: appSettingsNav
+                SidebarNavigationButton {
                     enabled: !root.shortcutsBlocked
                     objectName: "navigation_4"
+                    labelObjectName: "navigationLabel_4"
                     Layout.fillWidth: true
-                    implicitHeight: 42
-                    leftPadding: 12
-                    rightPadding: 12
                     text: s["ui.app_settings"]
-                    font { family: uiState.fontFamily; pixelSize: 14 }
-                    flat: true
+                    iconName: "gear"
+                    selected: root.currentPage === 4
+                    Accessible.role: Accessible.PageTab
                     onClicked: root.openPage(4)
-                    contentItem: RowLayout {
-                        spacing: 11
-                        AppIcon { name: "gear"; Layout.preferredWidth: 18; Layout.preferredHeight: 18; iconColor: root.theme.textPrimary }
-                        Text {
-                            objectName: "navigationLabel_4"
-                            Layout.fillWidth: true
-                            text: appSettingsNav.text
-                            color: root.theme.textPrimary
-                            font: appSettingsNav.font
-                            elide: Text.ElideRight
-                        }
-                    }
-                    background: Rectangle {
-                        radius: 4
-                        color: root.currentPage === 4 ? root.theme.accentDim
-                             : appSettingsNav.hovered ? root.theme.bgCardHover : "transparent"
-                        border.width: appSettingsNav.activeFocus ? 1 : 0
-                        border.color: root.theme.accent
-                        Rectangle {
-                            anchors { left: parent.left; verticalCenter: parent.verticalCenter }
-                            width: 3; height: 17; radius: 2
-                            color: root.theme.accent
-                            visible: root.currentPage === 4
-                        }
-                    }
                 }
-                Button {
-                    id: aboutNav
+                SidebarNavigationButton {
                     objectName: "aboutNavigation"
+                    labelObjectName: "aboutNavigationLabel"
                     Layout.fillWidth: true
-                    implicitHeight: 42
-                    leftPadding: 12
-                    rightPadding: 12
                     text: s["nav.about"]
+                    iconName: "info"
                     enabled: !root.shortcutsBlocked
-                    font { family: uiState.fontFamily; pixelSize: 14 }
-                    flat: true
                     onClicked: aboutDialog.open()
-                    contentItem: RowLayout {
-                        spacing: 11
-                        AppIcon { name: "info"; Layout.preferredWidth: 18; Layout.preferredHeight: 18; iconColor: root.theme.textPrimary }
-                        Text {
-                            objectName: "aboutNavigationLabel"
-                            Layout.fillWidth: true
-                            text: aboutNav.text
-                            color: root.theme.textPrimary
-                            font: aboutNav.font
-                            elide: Text.ElideRight
-                        }
-                    }
-                    background: Rectangle {
-                        radius: 4
-                        color: aboutNav.hovered ? root.theme.bgCardHover : "transparent"
-                        border.width: aboutNav.activeFocus ? 1 : 0
-                        border.color: root.theme.accent
-                    }
                 }
                 Text {
                     Layout.leftMargin: 12
