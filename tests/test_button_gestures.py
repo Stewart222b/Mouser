@@ -8,7 +8,7 @@ wiring that arms owners at the hook and routes swipe events to actions.
 import copy
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from core import config as cfg_mod
 from core.config import (
@@ -364,6 +364,51 @@ class EngineButtonGestureWiringTests(unittest.TestCase):
         # The middle_down/up events must not be wired to a normal handler; the
         # hook owns them via arming.
         self.assertNotIn("middle_down", engine.hook.registered)
+
+    def test_native_gesture_tap_toggles_actions_ring(self):
+        engine = self._engine(
+            {"actions_ring": "gesture_swipe",
+             "actions_ring_tap": "activate_actions_ring"},
+            supported_buttons=("actions_ring",),
+        )
+        show, hide = Mock(), Mock()
+        engine.set_ring_show_callback(show)
+        engine.set_ring_hide_callback(hide)
+        handler = engine.hook.registered["sense_click"]
+        event = SimpleNamespace(event_type="sense_click", raw_data=None)
+        with patch("core.engine.execute_action") as execute:
+            handler(event)
+            show.assert_called_once_with(
+                engine.cfg["settings"]["actions_ring_slots"], True
+            )
+            self.assertEqual(engine._ring.state, engine._ring.SHOWING_TOGGLE)
+            handler(event)
+            hide.assert_called_once_with()
+            self.assertEqual(engine._ring.state, engine._ring.IDLE)
+            execute.assert_not_called()
+        engine._ring.shutdown()
+
+    def test_button_gesture_tap_opens_actions_ring_unless_disabled(self):
+        engine = self._engine(
+            {"middle": "gesture_swipe",
+             "middle_tap": "activate_actions_ring"},
+            supported_buttons=("middle",),
+        )
+        show = Mock()
+        engine.set_ring_show_callback(show)
+        engine.set_ring_hide_callback(Mock())
+        handler = engine.hook.registered["button_tap"]
+        event = SimpleNamespace(
+            event_type="button_tap", raw_data={"gesture_owner": "middle"}
+        )
+        engine.set_enabled(False)
+        handler(event)
+        show.assert_not_called()
+        engine.set_enabled(True)
+        handler(event)
+        self.assertEqual(engine._ring.state, engine._ring.SHOWING_TOGGLE)
+        show.assert_called_once()
+        engine._ring.shutdown()
 
 
 if __name__ == "__main__":

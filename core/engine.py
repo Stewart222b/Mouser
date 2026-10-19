@@ -1068,6 +1068,10 @@ class Engine:
     def _dispatch_action(self, action_id, source_key=""):
         """Route an action to the appropriate engine handler or system executor."""
         if action_id == "activate_actions_ring":
+            # Gesture taps/directions are resolved actions, rather than raw
+            # button down/up events. Open the ring in click-to-toggle mode.
+            if self._ring is not None:
+                self._ring.on_click()
             return
         elif action_id == "toggle_smart_shift":
             self._toggle_smart_shift(source_key)
