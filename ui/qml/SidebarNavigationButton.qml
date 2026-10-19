@@ -33,12 +33,12 @@ Button {
         Text {
             id: label
             objectName: control.labelObjectName
-            readonly property rect inkBounds: (labelMetrics.font, labelMetrics.tightBoundingRect(text))
+            // Keep Latin baselines stable when a label contains descenders.
+            readonly property string alignmentSample: /[\u3400-\u9fff]/.test(text) ? "中" : "Hx"
+            readonly property rect alignmentBounds: (labelMetrics.font, labelMetrics.tightBoundingRect(alignmentSample))
             x: 29
             width: Math.max(0, parent.width - x)
-            // Align the visible glyphs, including Chinese fallback fonts,
-            // to the icon and selection background rather than the line box.
-            y: parent.height / 2 - baselineOffset - inkBounds.y - inkBounds.height / 2
+            y: parent.height / 2 - baselineOffset - alignmentBounds.y - alignmentBounds.height / 2
             text: control.text
             font: control.font
             color: control.theme.textPrimary

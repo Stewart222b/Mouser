@@ -32,19 +32,23 @@ Item {
         slots[index] = actionId
         backend.setActionsRingSlots(slots)
     }
+    SettingsPageHeader {
+        x: settingsContent.x
+        y: Theme.pageTopPadding
+        width: settingsContent.width
+        title: "Actions Ring"
+    }
     ScrollView {
         id: pageScroll
         anchors.fill: parent
+        anchors.topMargin: Theme.pageTopPadding + Theme.pageHeaderHeight
         clip: true
         contentWidth: availableWidth
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
         SettingsContent {
+            id: settingsContent
             objectName: "ringSettingsContent"
             viewportWidth: pageScroll.availableWidth
-            Item { width: 1; height: Theme.pageTopPadding }
-            SettingsPageHeader {
-                title: "Actions Ring"
-            }
             SettingsForm {
                 objectName: "ringSettingsForm"
                 SettingRow {

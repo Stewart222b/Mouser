@@ -65,7 +65,8 @@ def probe():
         @Property(bool, constant=True)
         def systemDarkMode(self): return self.darkMode
         @Property(str, constant=True)
-        def fontFamily(self): return "Segoe UI"
+        def fontFamily(self):
+            return os.environ.get("MOUSER_UI_FONT", "Microsoft YaHei UI" if sys.platform == "win32" else "Segoe UI")
         @Property(str, constant=True)
         def appearanceMode(self): return "dark" if self.darkMode else "light"
 
@@ -73,8 +74,10 @@ def probe():
     app = QApplication(["settings-test", "-platform", "offscreen"])
     # Qt's Windows offscreen plugin starts without the native font database.
     if sys.platform == "win32" and not QFontDatabase.families():
-        for font in ("segoeui.ttf", "msyh.ttc"):
-            QFontDatabase.addApplicationFont(str(Path(os.environ["WINDIR"]) / "Fonts" / font))
+        for font in ("segoeui.ttf", "segoeuib.ttf", "msyh.ttc", "msyhbd.ttc"):
+            path = Path(os.environ["WINDIR"]) / "Fonts" / font
+            if path.is_file():
+                QFontDatabase.addApplicationFont(str(path))
     cfg = copy.deepcopy(DEFAULT_CONFIG)
     cfg["settings"]["check_for_updates"] = False
     cfg["settings"]["language"] = "zh_CN"
@@ -151,7 +154,9 @@ def probe():
                 label = by_name[label_name]
                 icon = by_name[name + "_icon"]
                 background = by_name[name + "_background"]
-                ink = QFontMetricsF(label.property("font")).tightBoundingRect(label.property("text"))
+                text = label.property("text")
+                sample = "中" if any("\u3400" <= ch <= "\u9fff" for ch in text) else "Hx"
+                ink = QFontMetricsF(label.property("font")).tightBoundingRect(sample)
                 ink_center = label.mapToScene(QPointF(
                     0, label.property("baselineOffset") + ink.y() + ink.height() / 2
                 )).y()
@@ -291,6 +296,11 @@ def probe():
         assert_navigation_alignment()
         about_label.setProperty("font", normal_font); settle()
         assert_navigation_alignment()
+        for language in ("en", "zh_CN"):
+            lm.setLanguage(language); settle()
+            for page in (0, 2, 3, 4, 0):
+                window.setProperty("currentPage", page); settle()
+                assert_navigation_alignment()
         window.setProperty("currentPage", 1); settle()
         def visible(name): return any(o.property("visible") for o in window.findChildren(QObject) if o.objectName() == name)
         assert visible("pointerSettingsSection") and not visible("appearanceSettingsSection")
@@ -543,6 +553,7 @@ def probe():
         for width, height in ((1040, 620), (1240, 800), (1920, 1080), (2560, 1440), (1240, 800)):
             window.setWidth(width); window.setHeight(height); settle()
             title_positions = []
+            title_baselines = []
             for page, content_name in {0: "mouseSettingsContent", **content_names}.items():
                 window.setProperty("currentPage", page); settle()
                 assert_navigation_alignment()
@@ -552,10 +563,12 @@ def probe():
                     while scroller is not None and scroller.property("contentY") is None:
                         scroller = scroller.parentItem()
                     assert scroller is not None
-                    scroller.setProperty("contentY", 0); settle()
+                    scroll_range = max(0, scroller.property("contentHeight") - scroller.height())
+                    scroller.setProperty("contentY", min(60, scroll_range)); settle()
                 title = find("settingsPageTitle")
                 position = title.mapToScene(QPointF(0, 0))
                 title_positions.append((position.x(), position.y()))
+                title_baselines.append(title.mapToScene(QPointF(0, title.property("baselineOffset"))).y())
                 assert title.height() == 52, (page, title.height())
                 assert title.property("font").pixelSize() == 24
                 viewport = content.property("viewportWidth")
@@ -592,6 +605,7 @@ def probe():
             for position in title_positions[1:]:
                 assert abs(position[0] - title_positions[0][0]) < 1, (width, title_positions)
                 assert abs(position[1] - title_positions[0][1]) < 1, (width, title_positions)
+            assert max(title_baselines) - min(title_baselines) < 1, (width, title_baselines)
         assert ring_radii[2] > ring_radii[1] > ring_radii[0], ring_radii
         assert abs(ring_radii[-1] - ring_radii[1]) < 1, ring_radii
         assert cfg == resize_before, "Maximize and restore must not write preferences"
@@ -603,6 +617,7 @@ def probe():
             backend._connected_device_transport = "Bluetooth"
             backend.deviceInfoChanged.emit()
             backend._handleBatteryChange(95, False)
+            lm.setLanguage(os.environ.get("MOUSER_UI_CAPTURE_LANGUAGE", "zh_CN")); settle()
             haptic.setProperty("advancedExpanded", False)
             QTest.qWait(2100)
             for page, name in ((0, "buttons"), (1, "pointer-scroll"), (2, "haptics"), (3, "actions-ring"), (4, "app-settings")):

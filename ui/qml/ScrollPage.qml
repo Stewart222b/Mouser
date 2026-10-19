@@ -58,19 +58,23 @@ Item {
         return s["scroll.update_idle"]
     }
 
+    SettingsPageHeader {
+        x: settingsContent.x
+        y: Theme.pageTopPadding
+        width: settingsContent.width
+        title: scrollPage.applicationSettings ? s["ui.app_settings"] : s["ui.pointer_scroll"]
+    }
     ScrollView {
         id: pageScroll
         anchors.fill: parent
+        anchors.topMargin: Theme.pageTopPadding + Theme.pageHeaderHeight
         clip: true
         contentWidth: availableWidth
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
         SettingsContent {
+            id: settingsContent
             objectName: scrollPage.applicationSettings ? "appSettingsContent" : "pointerSettingsContent"
             viewportWidth: pageScroll.availableWidth
-            Item { width: 1; height: Theme.pageTopPadding }
-            SettingsPageHeader {
-                title: scrollPage.applicationSettings ? s["ui.app_settings"] : s["ui.pointer_scroll"]
-            }
             SettingsForm {
                 objectName: scrollPage.applicationSettings ? "appSettingsForm" : "pointerSettingsForm"
                 SettingsSection {

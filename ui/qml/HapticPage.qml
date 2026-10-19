@@ -43,20 +43,24 @@ Item {
         return false
     }
 
+    SettingsPageHeader {
+        x: settingsContent.x
+        y: Theme.pageTopPadding
+        width: settingsContent.width
+        title: s["haptic.title"]
+    }
     ScrollView {
         id: pageScroll
         anchors.fill: parent
+        anchors.topMargin: Theme.pageTopPadding + Theme.pageHeaderHeight
         clip: true
         contentWidth: availableWidth
         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
         SettingsContent {
+            id: settingsContent
             objectName: "hapticSettingsContent"
             viewportWidth: pageScroll.availableWidth
             spacing: 0
-            Item { width: 1; height: Theme.pageTopPadding }
-            SettingsPageHeader {
-                title: s["haptic.title"]
-            }
             SettingsForm {
                 objectName: "hapticSettingsForm"
                 SettingRow {
