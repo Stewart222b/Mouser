@@ -55,18 +55,20 @@ Item {
             spacing: 0
             Item { width: 1; height: Theme.pageTopPadding }
             SettingsPageHeader {
-                width: Math.min(parent.width, Theme.settingsMaximumWidth)
                 title: s["haptic.title"]
-                SettingsSwitch {
-                    objectName: "hapticEnableSwitch"
-                    text: s["haptic.enabled"]
-                    checked: backend.hapticEnabled
-                    font { family: uiState.fontFamily; pixelSize: 13 }
-                    onClicked: backend.setHapticEnabled(checked)
-                }
             }
             SettingsForm {
                 objectName: "hapticSettingsForm"
+                SettingRow {
+                    width: parent.width
+                    label: s["haptic.enabled"]
+                    SettingsSwitch {
+                        objectName: "hapticEnableSwitch"
+                        Accessible.name: s["haptic.enabled"]
+                        checked: backend.hapticEnabled
+                        onClicked: backend.setHapticEnabled(checked)
+                    }
+                }
                 SettingRow {
                     width: parent.width
                     label: s["haptic.level"]
