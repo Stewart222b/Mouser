@@ -391,6 +391,13 @@ def probe():
             assert finished.wait(1)
             fake.set_dpi.side_effect = None
         precise = find("dpiSetting_value")
+        reveal(precise)
+        precise.property("contentItem").forceActiveFocus()
+        QTest.keyClick(window, Qt.Key.Key_A, Qt.KeyboardModifier.ControlModifier)
+        for key in (Qt.Key.Key_1, Qt.Key.Key_7, Qt.Key.Key_5, Qt.Key.Key_0):
+            QTest.keyClick(window, key)
+        QTest.keyClick(window, Qt.Key.Key_Return); settle()
+        assert cfg["settings"]["dpi"] == 1750
         precise.setProperty("value", 1600); precise.valueModified.emit(); settle()
         assert cfg["settings"]["dpi"] == 1600
         toggle(find("invertHorizontalSwitch"))
@@ -462,6 +469,14 @@ def probe():
         assert cfg["settings"]["appearance_mode"] == "dark"
         activate(find("appearanceCombo"), 0)
         assert cfg["settings"]["appearance_mode"] == "system"
+        appearance = find("appearanceCombo")
+        reveal(appearance)
+        appearance.forceActiveFocus()
+        QTest.keyClick(window, Qt.Key.Key_Space); settle()
+        QTest.keyClick(window, Qt.Key.Key_Down)
+        QTest.keyClick(window, Qt.Key.Key_Return); settle()
+        assert cfg["settings"]["appearance_mode"] == "light"
+        activate(appearance, 0)
         activate(find("languageCombo"), 0)
         assert cfg["settings"]["language"] == "en"
         activate(find("languageCombo"), 1)
@@ -499,6 +514,8 @@ def probe():
         content_names = {1: "pointerSettingsContent", 2: "hapticSettingsContent",
                          3: "ringSettingsContent", 4: "appSettingsContent"}
         ring_radii = []
+        form_names = {1: "pointerSettingsForm", 2: "hapticSettingsForm",
+                      3: "ringSettingsForm", 4: "appSettingsForm"}
         for width, height in ((1040, 620), (1240, 800), (1920, 1080), (2560, 1440), (1240, 800)):
             window.setWidth(width); window.setHeight(height); settle()
             title_positions = []
@@ -519,19 +536,34 @@ def probe():
                 viewport = content.property("viewportWidth")
                 assert abs(content.width() - min(viewport - 64, 1280)) < 1, (content_name, width, content.width())
                 assert abs(content.x() + content.width() / 2 - viewport / 2) < 1, (content_name, width, content.x())
+                if page in form_names:
+                    form = find(form_names[page])
+                    assert abs(form.width() - min(content.width(), 1040)) < 1
+                    assert abs(form.mapToScene(QPointF()).x() - position.x()) < 1
+                if page == 0:
+                    assert find("mouseWorkbench").height() <= 540
+                    assert find("mouseWorkbench").width() <= 1120
+                    assert find("physicalButtonSelector").width() <= 280
+                    assert find("profileSelector").height() == 36
                 if page == 1:
                     assert find("dpiSetting_slider").width() <= 246
+                    assert find("dpiSetting_value").height() == 36
+                    assert find("dpiPresetCombo").height() == 36
+                elif page == 2:
+                    assert find("hapticLevel_0").height() == 36
                 elif page == 3:
                     ring = find("ringPreview")
                     ring_radii.append(ring.property("outerRadius"))
                     assert ring.height() > 350
                     assert 299 <= find("ringActionCombo").width() <= 421
+                    assert find("ringActionCombo").height() == 36
                     for index in range(4):
                         sector = find("ringSector_" + str(index))
                         assert sector.x() >= 0 and sector.x() + sector.width() <= ring.width() + 1
                         assert sector.y() >= 0 and sector.y() + sector.height() <= ring.height() + 1
                 elif page == 4:
                     assert find("appearanceCombo").width() <= 181
+                    assert find("appearanceCombo").height() == 36
             for position in title_positions[1:]:
                 assert abs(position[0] - title_positions[0][0]) < 1, (width, title_positions)
                 assert abs(position[1] - title_positions[0][1]) < 1, (width, title_positions)
@@ -570,6 +602,7 @@ def probe():
                           "pointer_and_app_preferences": True, "ring_scope_and_custom_shortcuts": True,
                           "hotspot_outer_target_click": True, "wide_layout_and_restore": True,
                           "page_title_alignment_across_five_pages": True,
+                          "desktop_control_sizes_and_form_widths": True,
                           "haptic_selection_preview": True, "all_slider_release_commits": True,
                           "wheel_and_force_gui_responsive_during_hardware_wait": True,
                           "global_device_status_states_and_sidebar_alignment": True}))

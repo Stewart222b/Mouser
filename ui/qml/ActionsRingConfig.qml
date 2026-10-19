@@ -45,56 +45,59 @@ Item {
             SettingsPageHeader {
                 title: "Actions Ring"
             }
-            SettingRow {
-                width: parent.width
-                label: s["ring.scope_title"]
-                description: backend.actionsRingUseGlobal ? s["ring.scope_global_desc"] : s["ring.scope_perapp_desc"]
-                SettingsSwitch {
-                    objectName: "ringGlobalSwitch"
-                    checked: backend.actionsRingUseGlobal
-                    Accessible.name: s["ring.scope_title"]
-                    onClicked: {
-                        var profile = backend.ringEditProfile
-                        backend.setActionsRingUseGlobal(checked)
-                        if (!checked) backend.setRingEditProfile(profile)
+            SettingsForm {
+                objectName: "ringSettingsForm"
+                SettingRow {
+                    width: parent.width
+                    label: s["ring.scope_title"]
+                    description: backend.actionsRingUseGlobal ? s["ring.scope_global_desc"] : s["ring.scope_perapp_desc"]
+                    SettingsSwitch {
+                        objectName: "ringGlobalSwitch"
+                        checked: backend.actionsRingUseGlobal
+                        Accessible.name: s["ring.scope_title"]
+                        onClicked: {
+                            var profile = backend.ringEditProfile
+                            backend.setActionsRingUseGlobal(checked)
+                            if (!checked) backend.setRingEditProfile(profile)
+                        }
                     }
                 }
-            }
-            SettingRow {
-                width: parent.width
-                visible: !backend.actionsRingUseGlobal
-                label: s["ui.edit_profile"]
-                ComboBox {
-                    objectName: "ringProfileCombo"
-                    Layout.preferredWidth: 240
-                    model: backend.profiles
-                    textRole: "label"
-                    currentIndex: {
-                        var profiles = backend.profiles
-                        for (var i = 0; i < profiles.length; ++i) if (profiles[i].name === backend.ringEditProfile) return i
-                        return 0
-                    }
-                    displayText: currentIndex >= 0 && currentIndex < backend.profiles.length
-                                 ? (lm.strings, lm.trProfile(backend.profiles[currentIndex].name, backend.profiles[currentIndex].label)) : ""
-                    delegate: ItemDelegate {
-                        required property var modelData
-                        width: parent ? parent.width : implicitWidth
-                        text: (lm.strings, lm.trProfile(modelData.name, modelData.label))
-                        highlighted: ListView.isCurrentItem
+                SettingRow {
+                    width: parent.width
+                    visible: !backend.actionsRingUseGlobal
+                    label: s["ui.edit_profile"]
+                    SettingsComboBox {
+                        objectName: "ringProfileCombo"
+                        Layout.preferredWidth: 240
+                        model: backend.profiles
+                        textRole: "label"
+                        currentIndex: {
+                            var profiles = backend.profiles
+                            for (var i = 0; i < profiles.length; ++i) if (profiles[i].name === backend.ringEditProfile) return i
+                            return 0
+                        }
+                        displayText: currentIndex >= 0 && currentIndex < backend.profiles.length
+                                     ? (lm.strings, lm.trProfile(backend.profiles[currentIndex].name, backend.profiles[currentIndex].label)) : ""
+                        delegate: ItemDelegate {
+                            required property var modelData
+                            width: parent ? parent.width : implicitWidth
+                            text: (lm.strings, lm.trProfile(modelData.name, modelData.label))
+                            highlighted: ListView.isCurrentItem
+                            font { family: uiState.fontFamily; pixelSize: 13 }
+                        }
                         font { family: uiState.fontFamily; pixelSize: 13 }
+                        onActivated: function(index) { backend.setRingEditProfile(backend.profiles[index].name) }
                     }
-                    font { family: uiState.fontFamily; pixelSize: 13 }
-                    onActivated: function(index) { backend.setRingEditProfile(backend.profiles[index].name) }
                 }
-            }
-            SettingsSliderRow {
-                objectName: "ringHoldSetting"
-                width: parent.width
-                label: s["ring.hold_delay"]
-                from: 100; to: 500; stepSize: 10
-                value: backend.actionsRingHoldMs
-                suffix: "ms"
-                onValueEdited: function(value) { backend.setActionsRingHoldMs(Math.round(value)) }
+                SettingsSliderRow {
+                    objectName: "ringHoldSetting"
+                    width: parent.width
+                    label: s["ring.hold_delay"]
+                    from: 100; to: 500; stepSize: 10
+                    value: backend.actionsRingHoldMs
+                    suffix: "ms"
+                    onValueEdited: function(value) { backend.setActionsRingHoldMs(Math.round(value)) }
+                }
             }
             RowLayout {
                 objectName: "ringWorkbench"
@@ -149,7 +152,7 @@ Item {
                         font { family: uiState.fontFamily; pixelSize: 14 }
                         color: actionsRingConfig.theme.textPrimary
                     }
-                    ComboBox {
+                    SettingsComboBox {
                         id: ringActionCombo
                         objectName: "ringActionCombo"
                         Layout.fillWidth: true

@@ -63,7 +63,7 @@ SettingRow {
             border.color: row.theme.accent
         }
     }
-    SpinBox {
+    SettingsSpinBox {
         objectName: row.objectName + "_value"
         visible: row.editableValue
         Layout.preferredWidth: 160

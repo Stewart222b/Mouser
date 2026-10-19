@@ -71,297 +71,300 @@ Item {
             SettingsPageHeader {
                 title: scrollPage.applicationSettings ? s["ui.app_settings"] : s["ui.pointer_scroll"]
             }
-            SettingsSection {
-                objectName: "pointerSettingsSection"
-                width: parent.width
-                visible: !scrollPage.applicationSettings
-                title: s["ui.pointer_section"]
-                SettingsSliderRow {
-                    objectName: "dpiSetting"
+            SettingsForm {
+                objectName: scrollPage.applicationSettings ? "appSettingsForm" : "pointerSettingsForm"
+                SettingsSection {
+                    objectName: "pointerSettingsSection"
                     width: parent.width
-                    label: s["scroll.pointer_speed"]
-                    description: backend.hidFeaturesReady ? s["scroll.pointer_speed_desc"] : s["ui.connect_device_hint"]
-                    enabled: backend.hidFeaturesReady
-                    from: backend.deviceDpiMin
-                    to: backend.deviceDpiMax
-                    stepSize: 50
-                    value: backend.dpi
-                    suffix: "DPI"
-                    editableValue: true
-                    onValueEdited: function(value) { backend.setDpi(Math.round(value)) }
-                }
-                SettingRow {
-                    width: parent.width
-                    label: s["ui.common_dpi"]
-                    enabled: backend.hidFeaturesReady
-                    ComboBox {
-                        objectName: "dpiPresetCombo"
-                        Layout.preferredWidth: 180
-                        model: scrollPage.dpiPresets
-                        currentIndex: scrollPage.dpiPresets.indexOf(backend.dpi)
-                        displayText: currentIndex >= 0 ? currentText + " DPI" : s["ui.choose_preset"]
-                        font { family: uiState.fontFamily; pixelSize: 13 }
-                        onActivated: function(index) { backend.setDpi(scrollPage.dpiPresets[index]) }
+                    visible: !scrollPage.applicationSettings
+                    title: s["ui.pointer_section"]
+                    SettingsSliderRow {
+                        objectName: "dpiSetting"
+                        width: parent.width
+                        label: s["scroll.pointer_speed"]
+                        description: backend.hidFeaturesReady ? s["scroll.pointer_speed_desc"] : s["ui.connect_device_hint"]
+                        enabled: backend.hidFeaturesReady
+                        from: backend.deviceDpiMin
+                        to: backend.deviceDpiMax
+                        stepSize: 50
+                        value: backend.dpi
+                        suffix: "DPI"
+                        editableValue: true
+                        onValueEdited: function(value) { backend.setDpi(Math.round(value)) }
                     }
-                }
-            }
-            SettingsSection {
-                width: parent.width
-                visible: !scrollPage.applicationSettings && backend.deviceHasSmartShift
-                title: s["ui.wheel_section"]
-                SettingRow {
-                    width: parent.width
-                    label: s["scroll.smart_shift"]
-                    description: s["scroll.smart_shift_desc"]
-                    enabled: backend.smartShiftSupported
-                    SettingsSwitch {
-                        objectName: "smartShiftSwitch"
-                        checked: backend.smartShiftEnabled
-                        Accessible.name: s["scroll.smart_shift"]
-                        onClicked: backend.setSmartShiftEnabled(checked)
-                    }
-                }
-                SettingsSliderRow {
-                    objectName: "smartShiftThresholdSetting"
-                    width: parent.width
-                    visible: backend.smartShiftEnabled
-                    enabled: backend.smartShiftSupported
-                    label: s["ui.shift_sensitivity"]
-                    from: 1; to: 50; stepSize: 1
-                    value: backend.smartShiftThreshold
-                    displayMultiplier: 2
-                    suffix: "%"
-                    onValueEdited: function(value) { backend.setSmartShiftThreshold(Math.round(value)) }
-                }
-                SettingRow {
-                    width: parent.width
-                    visible: !backend.smartShiftEnabled
-                    enabled: backend.smartShiftSupported
-                    label: s["scroll.wheel_mode"]
-                    ComboBox {
-                        objectName: "wheelModeCombo"
-                        Layout.preferredWidth: 180
-                        model: scrollPage.wheelModes
-                        textRole: "label"
-                        currentIndex: backend.smartShiftMode === "freespin" ? 1 : 0
-                        font { family: uiState.fontFamily; pixelSize: 13 }
-                        onActivated: function(index) { backend.setSmartShift(scrollPage.wheelModes[index].value) }
-                    }
-                }
-                SettingsSliderRow {
-                    objectName: "wheelForceSetting"
-                    width: parent.width
-                    visible: backend.smartShiftForceSupported && (backend.smartShiftEnabled || backend.smartShiftMode === "ratchet")
-                    label: s["scroll.scroll_force"]
-                    description: s["scroll.scroll_force_desc"]
-                    from: 1; to: 100; stepSize: 1
-                    value: backend.scrollForce
-                    suffix: "%"
-                    onValueEdited: function(value) { backend.setScrollForce(Math.round(value)) }
-                }
-            }
-            SettingsSection {
-                width: parent.width
-                visible: !scrollPage.applicationSettings
-                title: s["scroll.scroll_direction"]
-                SettingRow {
-                    width: parent.width
-                    label: s["scroll.invert_vertical"]
-                    SettingsSwitch {
-                        objectName: "invertVerticalSwitch"
-                        checked: backend.invertVScroll
-                        Accessible.name: s["scroll.invert_vertical"]
-                        onClicked: backend.setInvertVScroll(checked)
-                    }
-                }
-                SettingRow {
-                    width: parent.width
-                    label: s["scroll.invert_horizontal"]
-                    SettingsSwitch {
-                        objectName: "invertHorizontalSwitch"
-                        checked: backend.invertHScroll
-                        Accessible.name: s["scroll.invert_horizontal"]
-                        onClicked: backend.setInvertHScroll(checked)
-                    }
-                }
-                SettingRow {
-                    width: parent.width
-                    visible: backend.isMacOS
-                    label: s["scroll.ignore_trackpad"]
-                    description: s["scroll.ignore_trackpad_desc"]
-                    SettingsSwitch {
-                        checked: backend.ignoreTrackpad
-                        Accessible.name: s["scroll.ignore_trackpad"]
-                        onClicked: backend.setIgnoreTrackpad(checked)
-                    }
-                }
-                Text {
-                    width: parent.width
-                    topPadding: 12
-                    text: s["scroll.dpi_note"]
-                    font { family: uiState.fontFamily; pixelSize: 12 }
-                    color: scrollPage.theme.textSecondary
-                    wrapMode: Text.WordWrap
-                }
-            }
-            SettingsSection {
-                objectName: "appearanceSettingsSection"
-                width: parent.width
-                visible: scrollPage.applicationSettings
-                title: s["ui.display_section"]
-                SettingRow {
-                    width: parent.width
-                    label: s["scroll.appearance"]
-                    ComboBox {
-                        objectName: "appearanceCombo"
-                        Layout.preferredWidth: 180
-                        model: scrollPage.appearanceOptions
-                        textRole: "label"
-                        currentIndex: {
-                            for (var i = 0; i < scrollPage.appearanceOptions.length; ++i)
-                                if (scrollPage.appearanceOptions[i].value === backend.appearanceMode) return i
-                            return 0
+                    SettingRow {
+                        width: parent.width
+                        label: s["ui.common_dpi"]
+                        enabled: backend.hidFeaturesReady
+                        SettingsComboBox {
+                            objectName: "dpiPresetCombo"
+                            Layout.preferredWidth: 180
+                            model: scrollPage.dpiPresets
+                            currentIndex: scrollPage.dpiPresets.indexOf(backend.dpi)
+                            displayText: currentIndex >= 0 ? currentText + " DPI" : s["ui.choose_preset"]
+                            font { family: uiState.fontFamily; pixelSize: 13 }
+                            onActivated: function(index) { backend.setDpi(scrollPage.dpiPresets[index]) }
                         }
-                        font { family: uiState.fontFamily; pixelSize: 13 }
-                        onActivated: function(index) { backend.setAppearanceMode(scrollPage.appearanceOptions[index].value) }
                     }
                 }
-                SettingRow {
+                SettingsSection {
                     width: parent.width
-                    label: s["scroll.language"]
-                    ComboBox {
-                        objectName: "languageCombo"
-                        Layout.preferredWidth: 180
-                        model: lm.availableLanguages
-                        textRole: "name"
-                        currentIndex: {
-                            for (var i = 0; i < lm.availableLanguages.length; ++i)
-                                if (lm.availableLanguages[i].code === lm.language) return i
-                            return 0
+                    visible: !scrollPage.applicationSettings && backend.deviceHasSmartShift
+                    title: s["ui.wheel_section"]
+                    SettingRow {
+                        width: parent.width
+                        label: s["scroll.smart_shift"]
+                        description: s["scroll.smart_shift_desc"]
+                        enabled: backend.smartShiftSupported
+                        SettingsSwitch {
+                            objectName: "smartShiftSwitch"
+                            checked: backend.smartShiftEnabled
+                            Accessible.name: s["scroll.smart_shift"]
+                            onClicked: backend.setSmartShiftEnabled(checked)
                         }
-                        font { family: uiState.fontFamily; pixelSize: 13 }
-                        onActivated: function(index) { lm.setLanguage(lm.availableLanguages[index].code) }
+                    }
+                    SettingsSliderRow {
+                        objectName: "smartShiftThresholdSetting"
+                        width: parent.width
+                        visible: backend.smartShiftEnabled
+                        enabled: backend.smartShiftSupported
+                        label: s["ui.shift_sensitivity"]
+                        from: 1; to: 50; stepSize: 1
+                        value: backend.smartShiftThreshold
+                        displayMultiplier: 2
+                        suffix: "%"
+                        onValueEdited: function(value) { backend.setSmartShiftThreshold(Math.round(value)) }
+                    }
+                    SettingRow {
+                        width: parent.width
+                        visible: !backend.smartShiftEnabled
+                        enabled: backend.smartShiftSupported
+                        label: s["scroll.wheel_mode"]
+                        SettingsComboBox {
+                            objectName: "wheelModeCombo"
+                            Layout.preferredWidth: 180
+                            model: scrollPage.wheelModes
+                            textRole: "label"
+                            currentIndex: backend.smartShiftMode === "freespin" ? 1 : 0
+                            font { family: uiState.fontFamily; pixelSize: 13 }
+                            onActivated: function(index) { backend.setSmartShift(scrollPage.wheelModes[index].value) }
+                        }
+                    }
+                    SettingsSliderRow {
+                        objectName: "wheelForceSetting"
+                        width: parent.width
+                        visible: backend.smartShiftForceSupported && (backend.smartShiftEnabled || backend.smartShiftMode === "ratchet")
+                        label: s["scroll.scroll_force"]
+                        description: s["scroll.scroll_force_desc"]
+                        from: 1; to: 100; stepSize: 1
+                        value: backend.scrollForce
+                        suffix: "%"
+                        onValueEdited: function(value) { backend.setScrollForce(Math.round(value)) }
                     }
                 }
-            }
-            SettingsSection {
-                width: parent.width
-                visible: scrollPage.applicationSettings
-                title: s["scroll.startup"]
-                SettingRow {
+                SettingsSection {
                     width: parent.width
-                    visible: backend.supportsStartAtLogin
-                    label: s["scroll.start_at_login"]
-                    SettingsSwitch {
-                        objectName: "startAtLoginSwitch"
-                        checked: backend.startAtLogin
-                        Accessible.name: s["scroll.start_at_login"]
-                        onClicked: backend.setStartAtLogin(checked)
+                    visible: !scrollPage.applicationSettings
+                    title: s["scroll.scroll_direction"]
+                    SettingRow {
+                        width: parent.width
+                        label: s["scroll.invert_vertical"]
+                        SettingsSwitch {
+                            objectName: "invertVerticalSwitch"
+                            checked: backend.invertVScroll
+                            Accessible.name: s["scroll.invert_vertical"]
+                            onClicked: backend.setInvertVScroll(checked)
+                        }
+                    }
+                    SettingRow {
+                        width: parent.width
+                        label: s["scroll.invert_horizontal"]
+                        SettingsSwitch {
+                            objectName: "invertHorizontalSwitch"
+                            checked: backend.invertHScroll
+                            Accessible.name: s["scroll.invert_horizontal"]
+                            onClicked: backend.setInvertHScroll(checked)
+                        }
+                    }
+                    SettingRow {
+                        width: parent.width
+                        visible: backend.isMacOS
+                        label: s["scroll.ignore_trackpad"]
+                        description: s["scroll.ignore_trackpad_desc"]
+                        SettingsSwitch {
+                            checked: backend.ignoreTrackpad
+                            Accessible.name: s["scroll.ignore_trackpad"]
+                            onClicked: backend.setIgnoreTrackpad(checked)
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        topPadding: 12
+                        text: s["scroll.dpi_note"]
+                        font { family: uiState.fontFamily; pixelSize: 12 }
+                        color: scrollPage.theme.textSecondary
+                        wrapMode: Text.WordWrap
                     }
                 }
-                SettingRow {
+                SettingsSection {
+                    objectName: "appearanceSettingsSection"
                     width: parent.width
-                    label: s["scroll.start_minimized"]
-                    SettingsSwitch {
-                        objectName: "startMinimizedSwitch"
-                        checked: backend.startMinimized
-                        Accessible.name: s["scroll.start_minimized"]
-                        onClicked: backend.setStartMinimized(checked)
+                    visible: scrollPage.applicationSettings
+                    title: s["ui.display_section"]
+                    SettingRow {
+                        width: parent.width
+                        label: s["scroll.appearance"]
+                        SettingsComboBox {
+                            objectName: "appearanceCombo"
+                            Layout.preferredWidth: 180
+                            model: scrollPage.appearanceOptions
+                            textRole: "label"
+                            currentIndex: {
+                                for (var i = 0; i < scrollPage.appearanceOptions.length; ++i)
+                                    if (scrollPage.appearanceOptions[i].value === backend.appearanceMode) return i
+                                return 0
+                            }
+                            font { family: uiState.fontFamily; pixelSize: 13 }
+                            onActivated: function(index) { backend.setAppearanceMode(scrollPage.appearanceOptions[index].value) }
+                        }
+                    }
+                    SettingRow {
+                        width: parent.width
+                        label: s["scroll.language"]
+                        SettingsComboBox {
+                            objectName: "languageCombo"
+                            Layout.preferredWidth: 180
+                            model: lm.availableLanguages
+                            textRole: "name"
+                            currentIndex: {
+                                for (var i = 0; i < lm.availableLanguages.length; ++i)
+                                    if (lm.availableLanguages[i].code === lm.language) return i
+                                return 0
+                            }
+                            font { family: uiState.fontFamily; pixelSize: 13 }
+                            onActivated: function(index) { lm.setLanguage(lm.availableLanguages[index].code) }
+                        }
                     }
                 }
-            }
-            SettingsSection {
-                width: parent.width
-                visible: scrollPage.applicationSettings
-                title: s["scroll.screenshots"]
-                SettingRow {
+                SettingsSection {
                     width: parent.width
-                    label: s["scroll.screenshots_save_to"]
-                    description: backend.hasCustomScreenshotDirectory ? backend.screenshotDirectoryLabel : s["scroll.screenshots_system_default"]
-                    Button {
-                        objectName: "chooseScreenshotFolderButton"
-                        text: s["scroll.screenshots_choose"]
-                        flat: true
-                        onClicked: backend.chooseScreenshotDirectory()
+                    visible: scrollPage.applicationSettings
+                    title: s["scroll.startup"]
+                    SettingRow {
+                        width: parent.width
+                        visible: backend.supportsStartAtLogin
+                        label: s["scroll.start_at_login"]
+                        SettingsSwitch {
+                            objectName: "startAtLoginSwitch"
+                            checked: backend.startAtLogin
+                            Accessible.name: s["scroll.start_at_login"]
+                            onClicked: backend.setStartAtLogin(checked)
+                        }
                     }
-                    Button {
-                        objectName: "resetScreenshotFolderButton"
-                        text: s["scroll.screenshots_default"]
-                        flat: true
-                        enabled: backend.hasCustomScreenshotDirectory
-                        onClicked: backend.resetScreenshotDirectory()
+                    SettingRow {
+                        width: parent.width
+                        label: s["scroll.start_minimized"]
+                        SettingsSwitch {
+                            objectName: "startMinimizedSwitch"
+                            checked: backend.startMinimized
+                            Accessible.name: s["scroll.start_minimized"]
+                            onClicked: backend.setStartMinimized(checked)
+                        }
                     }
                 }
-            }
-            SettingsSection {
-                width: parent.width
-                visible: scrollPage.applicationSettings
-                title: s["ui.updates_section"]
-                SettingRow {
+                SettingsSection {
                     width: parent.width
-                    label: s["scroll.check_for_updates"]
-                    description: s["scroll.check_for_updates_desc"]
-                    SettingsSwitch {
-                        objectName: "checkUpdatesSwitch"
-                        checked: backend.checkForUpdates
-                        Accessible.name: s["scroll.check_for_updates"]
-                        onClicked: backend.setCheckForUpdates(checked)
+                    visible: scrollPage.applicationSettings
+                    title: s["scroll.screenshots"]
+                    SettingRow {
+                        width: parent.width
+                        label: s["scroll.screenshots_save_to"]
+                        description: backend.hasCustomScreenshotDirectory ? backend.screenshotDirectoryLabel : s["scroll.screenshots_system_default"]
+                        SettingsButton {
+                            objectName: "chooseScreenshotFolderButton"
+                            text: s["scroll.screenshots_choose"]
+                            flat: true
+                            onClicked: backend.chooseScreenshotDirectory()
+                        }
+                        SettingsButton {
+                            objectName: "resetScreenshotFolderButton"
+                            text: s["scroll.screenshots_default"]
+                            flat: true
+                            enabled: backend.hasCustomScreenshotDirectory
+                            onClicked: backend.resetScreenshotDirectory()
+                        }
                     }
                 }
-                Text {
+                SettingsSection {
                     width: parent.width
-                    topPadding: 12
-                    text: scrollPage.updateStatusText()
-                    wrapMode: Text.WordWrap
-                    font { family: uiState.fontFamily; pixelSize: 12 }
-                    color: backend.updateInstallStatus === "error" ? scrollPage.theme.danger : scrollPage.theme.textSecondary
-                }
-                ProgressBar {
-                    width: parent.width
-                    visible: backend.updateInstallStatus === "downloading"
-                    from: 0; to: 100
-                    value: backend.updateInstallProgress
-                }
-                Flow {
-                    width: parent.width
-                    spacing: 8
-                    Button {
-                        objectName: "checkUpdateButton"
-                        text: s["scroll.update_check"]
-                        flat: true
-                        enabled: !backend.updateInstallInProgress
-                        onClicked: backend.manualCheckForUpdates()
+                    visible: scrollPage.applicationSettings
+                    title: s["ui.updates_section"]
+                    SettingRow {
+                        width: parent.width
+                        label: s["scroll.check_for_updates"]
+                        description: s["scroll.check_for_updates_desc"]
+                        SettingsSwitch {
+                            objectName: "checkUpdatesSwitch"
+                            checked: backend.checkForUpdates
+                            Accessible.name: s["scroll.check_for_updates"]
+                            onClicked: backend.setCheckForUpdates(checked)
+                        }
                     }
-                    Button {
-                        objectName: "prepareUpdateButton"
-                        text: backend.isWindows ? s["scroll.update_download"] : s["scroll.update_verify"]
-                        visible: backend.latestUpdateVersion !== "" && !backend.updateInstallCanInstall && (!backend.isWindows || backend.updateInstallEnabled)
-                        enabled: !backend.updateInstallInProgress
-                        flat: true
-                        onClicked: backend.prepareLatestUpdate()
+                    Text {
+                        width: parent.width
+                        topPadding: 12
+                        text: scrollPage.updateStatusText()
+                        wrapMode: Text.WordWrap
+                        font { family: uiState.fontFamily; pixelSize: 12 }
+                        color: backend.updateInstallStatus === "error" ? scrollPage.theme.danger : scrollPage.theme.textSecondary
                     }
-                    Button {
-                        objectName: "cancelUpdateButton"
-                        text: s["scroll.update_cancel"]
-                        visible: ["checking", "downloading", "verifying"].indexOf(backend.updateInstallStatus) !== -1
-                        flat: true
-                        onClicked: backend.cancelUpdatePreparation()
+                    ProgressBar {
+                        width: parent.width
+                        visible: backend.updateInstallStatus === "downloading"
+                        from: 0; to: 100
+                        value: backend.updateInstallProgress
                     }
-                    Button {
-                        objectName: "installUpdateButton"
-                        text: s["scroll.update_install"]
-                        visible: backend.updateInstallCanInstall && backend.updateInstallEnabled
-                        enabled: !backend.updateInstallInProgress
-                        flat: true
-                        onClicked: backend.installPreparedUpdate()
-                    }
-                    Button {
-                        objectName: "openReleaseButton"
-                        text: s["scroll.update_open_release"]
-                        visible: backend.latestUpdateVersion !== ""
-                        enabled: !backend.updateInstallInProgress
-                        flat: true
-                        onClicked: backend.openLatestReleasePage()
+                    Flow {
+                        width: parent.width
+                        spacing: 8
+                        SettingsButton {
+                            objectName: "checkUpdateButton"
+                            text: s["scroll.update_check"]
+                            flat: true
+                            enabled: !backend.updateInstallInProgress
+                            onClicked: backend.manualCheckForUpdates()
+                        }
+                        SettingsButton {
+                            objectName: "prepareUpdateButton"
+                            text: backend.isWindows ? s["scroll.update_download"] : s["scroll.update_verify"]
+                            visible: backend.latestUpdateVersion !== "" && !backend.updateInstallCanInstall && (!backend.isWindows || backend.updateInstallEnabled)
+                            enabled: !backend.updateInstallInProgress
+                            flat: true
+                            onClicked: backend.prepareLatestUpdate()
+                        }
+                        SettingsButton {
+                            objectName: "cancelUpdateButton"
+                            text: s["scroll.update_cancel"]
+                            visible: ["checking", "downloading", "verifying"].indexOf(backend.updateInstallStatus) !== -1
+                            flat: true
+                            onClicked: backend.cancelUpdatePreparation()
+                        }
+                        SettingsButton {
+                            objectName: "installUpdateButton"
+                            text: s["scroll.update_install"]
+                            visible: backend.updateInstallCanInstall && backend.updateInstallEnabled
+                            enabled: !backend.updateInstallInProgress
+                            flat: true
+                            onClicked: backend.installPreparedUpdate()
+                        }
+                        SettingsButton {
+                            objectName: "openReleaseButton"
+                            text: s["scroll.update_open_release"]
+                            visible: backend.latestUpdateVersion !== ""
+                            enabled: !backend.updateInstallInProgress
+                            flat: true
+                            onClicked: backend.openLatestReleasePage()
+                        }
                     }
                 }
             }

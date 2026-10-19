@@ -579,7 +579,7 @@ Item {
             Layout.fillWidth: true
             spacing: 10
             Text { text: s["ui.edit_profile"]; font { family: uiState.fontFamily; pixelSize: 14 } color: theme.textPrimary }
-            ComboBox {
+            SettingsComboBox {
                 objectName: "profileSelector"
                 Layout.preferredWidth: Math.min(260, mousePage.width * 0.3)
                 model: backend.profiles
@@ -596,9 +596,9 @@ Item {
                 }
                 onActivated: function(index) { selectProfile(backend.profiles[index].name) }
             }
-            Button { text: s["ui.add_profile"]; flat: true; onClicked: openAddProfileDialog() }
+            SettingsButton { text: s["ui.add_profile"]; flat: true; onClicked: openAddProfileDialog() }
             Item { Layout.fillWidth: true }
-            Button {
+            SettingsButton {
                 visible: selectedProfile !== "" && selectedProfile !== "default"
                 text: s["mouse.delete_profile"]
                 flat: true
@@ -615,8 +615,12 @@ Item {
         Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: theme.border }
         RowLayout {
             id: buttonWorkspace
+            objectName: "mouseWorkbench"
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            Layout.maximumWidth: 1120
+            Layout.preferredHeight: Math.max(300, Math.min(540, mousePage.height - 260))
+            Layout.maximumHeight: 540
+            Layout.alignment: Qt.AlignLeft | Qt.AlignTop
             spacing: 24
             ColumnLayout {
                 Layout.fillWidth: true
@@ -666,9 +670,11 @@ Item {
                         color: theme.textSecondary
                     }
                 }
-                ComboBox {
+                SettingsComboBox {
                     objectName: "physicalButtonSelector"
                     Layout.fillWidth: true
+                    Layout.maximumWidth: 280
+                    Layout.alignment: Qt.AlignHCenter
                     model: mousePage.physicalButtons
                     textRole: "name"
                     font { family: uiState.fontFamily; pixelSize: 14 }
@@ -689,7 +695,10 @@ Item {
                 }
                 Text {
                     Layout.fillWidth: true
+                    Layout.maximumWidth: 420
+                    Layout.alignment: Qt.AlignHCenter
                     text: s["ui.button_preview_hint"]
+                    horizontalAlignment: Text.AlignHCenter
                     font { family: uiState.fontFamily; pixelSize: 12 }
                     color: theme.textSecondary
                     wrapMode: Text.WordWrap
@@ -700,6 +709,8 @@ Item {
                 objectName: "buttonEditor"
                 Layout.preferredWidth: Math.min(360, mousePage.width * 0.44)
                 Layout.fillHeight: true
+                Layout.topMargin: 24
+                Layout.bottomMargin: 12
                 clip: true
                 contentWidth: availableWidth
                 Column {
@@ -787,7 +798,7 @@ Item {
             width: parent.width
             spacing: 6
             Text { text: modelData.label; font { family: uiState.fontFamily; pixelSize: 14 } color: theme.textPrimary }
-            ComboBox {
+            SettingsComboBox {
                 width: parent.width
                 model: backend.allActions
                 textRole: "label"
@@ -819,7 +830,7 @@ Item {
                                     color: theme.textDim
                                 }
 
-                                ComboBox {
+                                SettingsComboBox {
                                     width: parent.width
                                     model: backend.allActions
                                     textRole: "label"
@@ -905,7 +916,7 @@ Item {
                                         color: theme.textPrimary
                                     }
 
-                                    ComboBox {
+                                    SettingsComboBox {
                                         Layout.fillWidth: true
                                         model: backend.allActions
                                         textRole: "label"
@@ -940,7 +951,7 @@ Item {
                                         color: theme.textPrimary
                                     }
 
-                                    ComboBox {
+                                    SettingsComboBox {
                                         Layout.fillWidth: true
                                         model: backend.allActions
                                         textRole: "label"
@@ -975,7 +986,7 @@ Item {
                                         color: theme.textPrimary
                                     }
 
-                                    ComboBox {
+                                    SettingsComboBox {
                                         Layout.fillWidth: true
                                         model: backend.allActions
                                         textRole: "label"
@@ -1010,7 +1021,7 @@ Item {
                                         color: theme.textPrimary
                                     }
 
-                                    ComboBox {
+                                    SettingsComboBox {
                                         Layout.fillWidth: true
                                         model: backend.allActions
                                         textRole: "label"
@@ -1044,7 +1055,7 @@ Item {
         font { family: uiState.fontFamily; pixelSize: 14; weight: Font.DemiBold }
         color: theme.textPrimary
     }
-    ComboBox {
+    SettingsComboBox {
         objectName: "buttonActionCombo"
         width: parent.width
         model: mousePage.availableButtonActions
@@ -1114,7 +1125,7 @@ Item {
                                             letterSpacing: 0 }
                                     color: theme.textDim
                                 }
-                                ComboBox {
+                                SettingsComboBox {
                                     width: parent.width
                                     model: backend.allActions
                                     textRole: "label"
@@ -1189,7 +1200,7 @@ Item {
                                             font { family: uiState.fontFamily; pixelSize: 12 }
                                             color: theme.textPrimary
                                         }
-                                        ComboBox {
+                                        SettingsComboBox {
                                             Layout.fillWidth: true
                                             model: backend.allActions
                                             textRole: "label"
@@ -1390,12 +1401,13 @@ Item {
                 }
             }
         }
-        Button {
+        SettingsButton {
             objectName: "deviceToolsButton"
             text: s["ui.device_tools"]
             flat: true
             onClicked: deviceTools.open()
         }
+        Item { Layout.fillHeight: true }
     }
     Dialog {
         id: deviceTools
@@ -1413,7 +1425,7 @@ Item {
             Column {
                 width: parent.width
                 spacing: 16
-                ComboBox {
+                SettingsComboBox {
                     width: parent.width
                     model: backend.manualLayoutChoices
                     textRole: "label"

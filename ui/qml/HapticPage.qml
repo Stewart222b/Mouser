@@ -55,6 +55,7 @@ Item {
             spacing: 0
             Item { width: 1; height: Theme.pageTopPadding }
             SettingsPageHeader {
+                width: Math.min(parent.width, Theme.settingsMaximumWidth)
                 title: s["haptic.title"]
                 SettingsSwitch {
                     objectName: "hapticEnableSwitch"
@@ -64,162 +65,167 @@ Item {
                     onClicked: backend.setHapticEnabled(checked)
                 }
             }
-            SettingRow {
-                width: parent.width
-                label: s["haptic.level"]
-                enabled: backend.hapticEnabled
-                ButtonGroup { id: levelGroup }
-                Repeater {
-                    model: hapticPage.hapticLevels
-                    RadioButton {
-                        required property var modelData
-                        objectName: "hapticLevel_" + modelData.value
-                        text: modelData.label
-                        checked: backend.hapticLevel === modelData.value
-                        ButtonGroup.group: levelGroup
-                        font { family: uiState.fontFamily; pixelSize: 13 }
-                        onClicked: backend.setHapticLevel(modelData.value)
-                    }
-                }
-            }
-            Item { width: 1; height: 25 }
-            Text {
-                text: s["ui.haptic_on_press"]
-                font { family: uiState.fontFamily; pixelSize: 16; weight: Font.DemiBold }
-                color: hapticPage.theme.textPrimary
-            }
-            Item { width: 1; height: 7 }
-            Repeater {
-                model: backend.hapticButtonRows
+            SettingsForm {
+                objectName: "hapticSettingsForm"
                 SettingRow {
-                    required property var modelData
                     width: parent.width
-                    label: (lm.strings, lm.trButton(modelData.label))
+                    label: s["haptic.level"]
                     enabled: backend.hapticEnabled
-                    SettingsSwitch {
-                        objectName: "buttonHaptic_" + modelData.key
-                        checked: hapticPage.buttonEnabled(modelData.key)
-                        Accessible.name: (lm.strings, lm.trButton(modelData.label))
-                        onClicked: backend.setButtonHaptic(modelData.key, checked)
-                    }
-                }
-            }
-            Item { width: 1; height: 25 }
-            Text {
-                text: s["ui.other_feedback"]
-                font { family: uiState.fontFamily; pixelSize: 16; weight: Font.DemiBold }
-                color: hapticPage.theme.textPrimary
-            }
-            Item { width: 1; height: 7 }
-            SettingRow {
-                width: parent.width
-                visible: backend.screenSwitchHapticAvailable
-                label: s["haptic.screen_switch_title"]
-                description: s["haptic.screen_switch_desc"]
-                enabled: backend.hapticEnabled
-                SettingsSwitch {
-                    objectName: "screenSwitchHapticToggle"
-                    checked: backend.screenSwitchHaptic
-                    Accessible.name: s["haptic.screen_switch_title"]
-                    onClicked: backend.setScreenSwitchHaptic(checked)
-                }
-            }
-            SettingRow {
-                width: parent.width
-                visible: backend.deviceHasActionsRing
-                label: s["haptic.ring_hover_title"]
-                description: s["haptic.ring_hover_desc"]
-                enabled: backend.hapticEnabled
-                SettingsSwitch {
-                    objectName: "ringHoverHapticSwitch"
-                    checked: backend.actionsRingHoverHaptic
-                    Accessible.name: s["haptic.ring_hover_title"]
-                    onClicked: backend.setActionsRingHoverHaptic(checked)
-                }
-            }
-            Button {
-                objectName: "hapticAdvancedButton"
-                topPadding: 18; bottomPadding: 18; leftPadding: 0
-                text: (hapticPage.advancedExpanded ? "\u2212  " : "+  ") + s["ui.advanced"]
-                flat: true
-                onClicked: hapticPage.advancedExpanded = !hapticPage.advancedExpanded
-                checkable: true
-                checked: hapticPage.advancedExpanded
-            }
-            Column {
-                width: parent.width
-                visible: hapticPage.advancedExpanded
-                SettingRow {
-                    width: parent.width
-                    visible: backend.forceSensingSupported
-                    label: s["haptic.force_title"]
-                    description: s["haptic.force_desc"]
-                    ComboBox {
-                        objectName: "forceSensitivityCombo"
-                        model: hapticPage.forcePresets
-                        textRole: "label"
-                        currentIndex: hapticPage.nearestForceIndex
-                        font { family: uiState.fontFamily; pixelSize: 13 }
-                        onActivated: function(index) { backend.setForceSensitivity(hapticPage.forcePresets[index].value) }
-                    }
-                }
-                Text {
-                    width: parent.width
-                    topPadding: 8; bottomPadding: 8
-                    visible: backend.forceSensingSupported && backend.forceSensitivity < backend.forceSensingDefault
-                    text: s["haptic.force_warning"]
-                    wrapMode: Text.WordWrap
-                    font { family: uiState.fontFamily; pixelSize: 12 }
-                    color: hapticPage.theme.warning
-                }
-                SettingRow {
-                    width: parent.width
-                    label: s["haptic.dedup_title"]
-                    description: s["haptic.dedup_desc"]
-                    enabled: backend.hapticEnabled
-                    SettingsSwitch {
-                        objectName: "hapticDedupSwitch"
-                        checked: backend.hapticDedup
-                        Accessible.name: s["haptic.dedup_title"]
-                        onClicked: backend.setHapticDedup(checked)
-                    }
-                }
-                Item { width: 1; height: 20 }
-                Text {
-                    text: s["haptic.actions_title"]
-                    font { family: uiState.fontFamily; pixelSize: 14; weight: Font.DemiBold }
-                    color: hapticPage.theme.textPrimary
-                }
-                Text {
-                    width: parent.width
-                    topPadding: 6; bottomPadding: 8
-                    text: s["ui.action_feedback_hint"]
-                    wrapMode: Text.WordWrap
-                    font { family: uiState.fontFamily; pixelSize: 12 }
-                    color: hapticPage.theme.textSecondary
-                }
-                Repeater {
-                    model: backend.hapticActionRows
-                    SettingRow {
-                        required property var modelData
-                        width: parent.width
-                        label: (lm.strings, lm.trAction(modelData.label))
-                        enabled: backend.hapticEnabled
-                        SettingsSwitch {
-                            objectName: "actionHaptic_" + modelData.id
-                            checked: hapticPage.actionEnabled(modelData.id)
-                            Accessible.name: (lm.strings, lm.trAction(modelData.label))
-                            onClicked: backend.setActionHaptic(modelData.id, checked)
+                    ButtonGroup { id: levelGroup }
+                    Repeater {
+                        model: hapticPage.hapticLevels
+                        RadioButton {
+                            implicitHeight: Theme.controlHeight
+                            topPadding: 0; bottomPadding: 0
+                            required property var modelData
+                            objectName: "hapticLevel_" + modelData.value
+                            text: modelData.label
+                            checked: backend.hapticLevel === modelData.value
+                            ButtonGroup.group: levelGroup
+                            font { family: uiState.fontFamily; pixelSize: 13 }
+                            onClicked: backend.setHapticLevel(modelData.value)
                         }
                     }
                 }
+                Item { width: 1; height: 25 }
                 Text {
+                    text: s["ui.haptic_on_press"]
+                    font { family: uiState.fontFamily; pixelSize: 16; weight: Font.DemiBold }
+                    color: hapticPage.theme.textPrimary
+                }
+                Item { width: 1; height: 7 }
+                Repeater {
+                    model: backend.hapticButtonRows
+                    SettingRow {
+                        required property var modelData
+                        width: parent.width
+                        label: (lm.strings, lm.trButton(modelData.label))
+                        enabled: backend.hapticEnabled
+                        SettingsSwitch {
+                            objectName: "buttonHaptic_" + modelData.key
+                            checked: hapticPage.buttonEnabled(modelData.key)
+                            Accessible.name: (lm.strings, lm.trButton(modelData.label))
+                            onClicked: backend.setButtonHaptic(modelData.key, checked)
+                        }
+                    }
+                }
+                Item { width: 1; height: 25 }
+                Text {
+                    text: s["ui.other_feedback"]
+                    font { family: uiState.fontFamily; pixelSize: 16; weight: Font.DemiBold }
+                    color: hapticPage.theme.textPrimary
+                }
+                Item { width: 1; height: 7 }
+                SettingRow {
                     width: parent.width
-                    topPadding: 14
-                    text: s["haptic.experimental_note"]
-                    wrapMode: Text.WordWrap
-                    font { family: uiState.fontFamily; pixelSize: 12 }
-                    color: hapticPage.theme.textSecondary
+                    visible: backend.screenSwitchHapticAvailable
+                    label: s["haptic.screen_switch_title"]
+                    description: s["haptic.screen_switch_desc"]
+                    enabled: backend.hapticEnabled
+                    SettingsSwitch {
+                        objectName: "screenSwitchHapticToggle"
+                        checked: backend.screenSwitchHaptic
+                        Accessible.name: s["haptic.screen_switch_title"]
+                        onClicked: backend.setScreenSwitchHaptic(checked)
+                    }
+                }
+                SettingRow {
+                    width: parent.width
+                    visible: backend.deviceHasActionsRing
+                    label: s["haptic.ring_hover_title"]
+                    description: s["haptic.ring_hover_desc"]
+                    enabled: backend.hapticEnabled
+                    SettingsSwitch {
+                        objectName: "ringHoverHapticSwitch"
+                        checked: backend.actionsRingHoverHaptic
+                        Accessible.name: s["haptic.ring_hover_title"]
+                        onClicked: backend.setActionsRingHoverHaptic(checked)
+                    }
+                }
+                SettingsButton {
+                    objectName: "hapticAdvancedButton"
+                    leftPadding: 0
+                    text: (hapticPage.advancedExpanded ? "\u2212  " : "+  ") + s["ui.advanced"]
+                    flat: true
+                    onClicked: hapticPage.advancedExpanded = !hapticPage.advancedExpanded
+                    checkable: true
+                    checked: hapticPage.advancedExpanded
+                }
+                Column {
+                    width: parent.width
+                    visible: hapticPage.advancedExpanded
+                    SettingRow {
+                        width: parent.width
+                        visible: backend.forceSensingSupported
+                        label: s["haptic.force_title"]
+                        description: s["haptic.force_desc"]
+                        SettingsComboBox {
+                            objectName: "forceSensitivityCombo"
+                            model: hapticPage.forcePresets
+                            textRole: "label"
+                            currentIndex: hapticPage.nearestForceIndex
+                            font { family: uiState.fontFamily; pixelSize: 13 }
+                            onActivated: function(index) { backend.setForceSensitivity(hapticPage.forcePresets[index].value) }
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        topPadding: 8; bottomPadding: 8
+                        visible: backend.forceSensingSupported && backend.forceSensitivity < backend.forceSensingDefault
+                        text: s["haptic.force_warning"]
+                        wrapMode: Text.WordWrap
+                        font { family: uiState.fontFamily; pixelSize: 12 }
+                        color: hapticPage.theme.warning
+                    }
+                    SettingRow {
+                        width: parent.width
+                        label: s["haptic.dedup_title"]
+                        description: s["haptic.dedup_desc"]
+                        enabled: backend.hapticEnabled
+                        SettingsSwitch {
+                            objectName: "hapticDedupSwitch"
+                            checked: backend.hapticDedup
+                            Accessible.name: s["haptic.dedup_title"]
+                            onClicked: backend.setHapticDedup(checked)
+                        }
+                    }
+                    Item { width: 1; height: 20 }
+                    Text {
+                        text: s["haptic.actions_title"]
+                        font { family: uiState.fontFamily; pixelSize: 14; weight: Font.DemiBold }
+                        color: hapticPage.theme.textPrimary
+                    }
+                    Text {
+                        width: parent.width
+                        topPadding: 6; bottomPadding: 8
+                        text: s["ui.action_feedback_hint"]
+                        wrapMode: Text.WordWrap
+                        font { family: uiState.fontFamily; pixelSize: 12 }
+                        color: hapticPage.theme.textSecondary
+                    }
+                    Repeater {
+                        model: backend.hapticActionRows
+                        SettingRow {
+                            required property var modelData
+                            width: parent.width
+                            label: (lm.strings, lm.trAction(modelData.label))
+                            enabled: backend.hapticEnabled
+                            SettingsSwitch {
+                                objectName: "actionHaptic_" + modelData.id
+                                checked: hapticPage.actionEnabled(modelData.id)
+                                Accessible.name: (lm.strings, lm.trAction(modelData.label))
+                                onClicked: backend.setActionHaptic(modelData.id, checked)
+                            }
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        topPadding: 14
+                        text: s["haptic.experimental_note"]
+                        wrapMode: Text.WordWrap
+                        font { family: uiState.fontFamily; pixelSize: 12 }
+                        color: hapticPage.theme.textSecondary
+                    }
                 }
             }
             Item { width: 1; height: 28 }

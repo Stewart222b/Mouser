@@ -10,12 +10,12 @@ Item {
     readonly property bool stacked: width < 570 && controls.implicitWidth > width * 0.45
     default property alias controlData: controls.data
     implicitHeight: (stacked ? labels.implicitHeight + controls.implicitHeight + 12
-                            : Math.max(labels.implicitHeight, controls.implicitHeight)) + 28
+                            : Math.max(labels.implicitHeight, controls.implicitHeight)) + 24
     opacity: enabled ? 1 : 0.45
 
     Column {
         id: labels
-        y: row.stacked ? 14 : (row.height - implicitHeight) / 2
+        y: row.stacked ? 12 : (row.height - implicitHeight) / 2
         width: row.stacked ? row.width : Math.max(80, row.width - controls.implicitWidth - 24)
         spacing: 4
         Text {
@@ -43,6 +43,6 @@ Item {
     Rectangle {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: 1
-        color: row.theme.border
+        color: Theme.alpha(row.theme.border, 0.38)
     }
 }
