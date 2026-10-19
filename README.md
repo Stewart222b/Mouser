@@ -27,7 +27,7 @@
 
 ## 下载与运行
 
-当前正式版本为 **3.8.6 · Windows x64**。在 [v3.8.6 Release](https://github.com/Stewart222b/Mouser/releases/tag/v3.8.6) 下载 [Mouser-Windows.zip](https://github.com/Stewart222b/Mouser/releases/download/v3.8.6/Mouser-Windows.zip)。
+当前正式版本为 **3.8.12 · Windows x64**。在 [v3.8.12 Release](https://github.com/Stewart222b/Mouser/releases/tag/v3.8.12) 下载 [Mouser-Windows.zip](https://github.com/Stewart222b/Mouser/releases/download/v3.8.12/Mouser-Windows.zip)。
 
 升级前退出 Mouser，将压缩包解压到新目录，保留完整的 `Mouser/` 文件夹并运行其中的 `Mouser.exe`。已有配置保留在用户应用数据目录。`SHA256SUMS.txt` 提供文件校验值。
 
