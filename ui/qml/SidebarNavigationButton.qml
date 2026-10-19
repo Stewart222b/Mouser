@@ -33,7 +33,7 @@ Button {
         Text {
             id: label
             objectName: control.labelObjectName
-            readonly property rect inkBounds: labelMetrics.tightBoundingRect(text)
+            readonly property rect inkBounds: (labelMetrics.font, labelMetrics.tightBoundingRect(text))
             x: 29
             width: Math.max(0, parent.width - x)
             // Align the visible glyphs, including Chinese fallback fonts,
