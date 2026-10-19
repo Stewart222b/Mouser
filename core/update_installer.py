@@ -15,6 +15,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import time
 import urllib.request
@@ -272,11 +273,17 @@ def verify_update_manifest(
 
 def platform_key(sys_platform: str | None = None, machine: str | None = None) -> str:
     system = sys_platform or sys.platform
-    arch = (machine or platform.machine() or "").lower()
     if system.startswith("win"):
+        # Python 3.12's platform.machine() calls uname()/win32_ver(), which
+        # can query WMI. Update bookkeeping runs before the tray is created;
+        # a blocked system query must not prevent the entire app from starting.
+        # Choose the update matching this Python executable's architecture,
+        # including x64 builds running under emulation on Windows ARM64.
+        arch = (machine or sysconfig.get_platform().removeprefix("win-")).lower()
         if arch in {"arm64", "aarch64"}:
             return "windows-arm64"
         return "windows-x64"
+    arch = (machine or platform.machine() or "").lower()
     if system == "darwin":
         if arch in {"arm64", "aarch64"}:
             return "macos-arm64"

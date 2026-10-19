@@ -210,6 +210,20 @@ class UpdateInstallerTests(unittest.TestCase):
         self.assertEqual(platform_key("darwin", "arm64"), "macos-arm64")
         self.assertEqual(platform_key("linux", "x86_64"), "linux-x64")
 
+    def test_windows_platform_key_uses_runtime_architecture_without_wmi(self):
+        with patch("core.update_installer.platform.machine",
+                   side_effect=AssertionError("Windows startup must not query WMI")):
+            for build, expected in (("win-amd64", "windows-x64"),
+                                    ("win-arm64", "windows-arm64")):
+                with self.subTest(build=build), patch(
+                    "core.update_installer.sysconfig.get_platform", return_value=build
+                ):
+                    self.assertEqual(platform_key("win32"), expected)
+
+    def test_non_windows_platform_key_still_detects_host_architecture(self):
+        with patch("core.update_installer.platform.machine", return_value="aarch64"):
+            self.assertEqual(platform_key("linux"), "linux-arm64")
+
     def test_verify_file_checks_size_and_sha256(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "asset.zip"
