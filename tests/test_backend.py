@@ -218,9 +218,9 @@ class BackendDeviceLayoutTests(unittest.TestCase):
     def test_device_image_source_uses_encoded_file_url(self):
         backend = self._make_backend(root_dir="/tmp/Mouser Build")
 
-        expected = QUrl.fromLocalFile(
+        expected = QUrl.fromLocalFile(str(Path(
             "/tmp/Mouser Build/images/icons/mouse-simple.svg"
-        ).toString()
+        ).resolve())).toString()
 
         self.assertEqual(backend.deviceImageSource, expected)
 
@@ -247,6 +247,63 @@ class BackendDeviceLayoutTests(unittest.TestCase):
         self.assertEqual(hscroll_hotspots[0]["buttonKey"], "hscroll_left")
         self.assertEqual(hscroll_hotspots[0]["summaryType"], "hscroll")
         self.assertTrue(hscroll_hotspots[0]["isHScroll"])
+
+    def test_g502_x_plus_uses_device_art_and_onboard_hotspots(self):
+        device = SimpleNamespace(
+            key="g502_x_plus",
+            display_name="G502 X PLUS",
+            product_name="G502 X PLUS",
+            dpi_min=100,
+            dpi_max=25600,
+            ui_layout="g502_x_plus",
+            supported_buttons=(
+                "middle", "xbutton1", "xbutton2",
+                "hscroll_left", "hscroll_right",
+                "g502_dpi_up", "g502_dpi_down",
+                "g502_profile", "g502_dpi_shift",
+            ),
+        )
+        backend = self._make_backend(
+            engine=_FakeEngine(device_connected=True, connected_device=device)
+        )
+
+        hotspot_keys = {hotspot["buttonKey"] for hotspot in backend.deviceHotspots}
+        self.assertTrue(backend.hasInteractiveDeviceLayout)
+        self.assertEqual(backend.effectiveDeviceLayoutKey, "g502_x_plus")
+        self.assertTrue(backend.deviceImageAsset.endswith("g502_x_plus/mouse.png"))
+        self.assertIn("g502_dpi_up", hotspot_keys)
+        self.assertIn("g502_dpi_down", hotspot_keys)
+        self.assertIn("g502_profile", hotspot_keys)
+        self.assertNotIn("hscroll_left", hotspot_keys)
+        self.assertTrue(backend.hscrollInMiddle)
+        view_ids = [view["id"] for view in backend.deviceViews]
+        self.assertEqual(view_ids, ["top", "side"])
+        side_keys = {hotspot["buttonKey"] for hotspot in backend.deviceViews[1]["hotspots"]}
+        self.assertEqual(side_keys, {"g502_dpi_shift", "xbutton2", "xbutton1"})
+        self.assertTrue(backend.g502.supported)
+        os_keys = {button["key"] for button in backend.buttons}
+        self.assertIn("middle", os_keys)
+        self.assertNotIn("g502_dpi_up", os_keys)
+        self.assertNotIn("g502_dpi_shift", os_keys)
+        onboard_keys = {button["key"] for button in backend.g502.buttons}
+        self.assertIn("g502_dpi_up", onboard_keys)
+        self.assertIn("g502_dpi_down", onboard_keys)
+        self.assertIn("g502_profile", onboard_keys)
+        self.assertIn("g502_dpi_shift", onboard_keys)
+        self.assertIn("middle", onboard_keys)
+        self.assertIn("xbutton1", onboard_keys)
+        self.assertIn("xbutton2", onboard_keys)
+        self.assertIn("hscroll_left", onboard_keys)
+        self.assertIn("hscroll_right", onboard_keys)
+
+    def test_g502_save_without_device_reports_receiver_error(self):
+        backend = self._make_backend()
+        backend.g502.save(10, "dpi_next")
+        self.assertFalse(backend.g502.supported)
+        self.assertEqual(
+            backend.g502.error,
+            "Connect one G502 X PLUS LIGHTSPEED receiver",
+        )
 
     def test_update_checks_disabled_do_not_start_timer(self):
         cfg = copy.deepcopy(DEFAULT_CONFIG)

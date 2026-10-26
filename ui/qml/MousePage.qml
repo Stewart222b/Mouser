@@ -399,6 +399,111 @@ Item {
     readonly property string swipeDownActionId: _swipeDownMap
         ? _swipeDownMap.actionId : "none"
 
+    function g502OnboardActive() {
+        return backend.effectiveDeviceLayoutKey === "g502_x_plus" || backend.g502.supported
+    }
+
+    function g502ExtraButtons() {
+        // List-only extras: OS-visible keys stay in physicalButtons via
+        // profile rows, but they now edit the same onboard slots.
+        if (!g502OnboardActive())
+            return []
+        var skip = {
+            "g502_left": true, "g502_right": true, "middle": true,
+            "xbutton1": true, "xbutton2": true,
+            "hscroll_left": true, "hscroll_right": true
+        }
+        var extras = []
+        var rows = backend.g502.buttons
+        for (var i = 0; i < rows.length; i++) {
+            if (skip[rows[i].key])
+                continue
+            extras.push(rows[i])
+        }
+        return extras
+    }
+
+    function onboardButtonFor(key) {
+        if (!g502OnboardActive())
+            return null
+        if (key === "g502_left" || key === "g502_right")
+            return null
+        var rows = backend.g502.buttons
+        for (var i = 0; i < rows.length; i++) {
+            if (rows[i].key === key)
+                return rows[i]
+        }
+        return null
+    }
+
+    readonly property bool isOnboardOnlyButton: onboardButtonFor(selectedButton) !== null
+    property int pendingOnboardSlot: -1
+    property var onboardDrafts: ({})
+    function onboardActionFor(key) {
+        var row = onboardButtonFor(key)
+        return onboardDrafts[key] !== undefined ? onboardDrafts[key] : (row ? row.actionId : "keep")
+    }
+    function stageOnboard(key, action) {
+        var drafts = Object.assign({}, onboardDrafts)
+        drafts[key] = action
+        onboardDrafts = drafts
+    }
+    function hasOnboardDraft(key) {
+        var row = onboardButtonFor(key)
+        return row && onboardDrafts[key] !== undefined && onboardDrafts[key] !== row.actionId
+    }
+    function commitOnboard(key) {
+        var row = onboardButtonFor(key)
+        if (row && hasOnboardDraft(key)) backend.g502.save(row.slot, onboardDrafts[key])
+    }
+
+    function onboardActionIndexFor(key) {
+        var _state = backend.g502.state
+        var onboard = onboardButtonFor(key)
+        var current = onboardActionFor(key)
+        var actions = backend.g502.actions
+        var customIndex = 0
+        for (var i = 0; i < actions.length; i++) {
+            if (actions[i].id === current)
+                return i
+            if (actions[i].id === "__custom__")
+                customIndex = i
+        }
+        if (String(current).indexOf("shortcut:") === 0)
+            return customIndex
+        return 0
+    }
+
+    function onboardActionIndex() {
+        return onboardActionIndexFor(selectedButton)
+    }
+
+    function onboardDisplayText(key, currentText) {
+        var onboard = onboardButtonFor(key)
+        var action = onboardActionFor(key)
+        if (String(action).indexOf("shortcut:") === 0)
+            return action.substring(9)
+        return (lm.strings, lm.trAction(currentText))
+    }
+
+    function saveOnboardForKey(key, actionId) {
+        var onboard = onboardButtonFor(key)
+        if (!onboard || !actionId)
+            return
+        if (actionId === "keep") {
+            var drafts = Object.assign({}, onboardDrafts)
+            delete drafts[key]
+            onboardDrafts = drafts
+            return
+        }
+        if (actionId === "__custom__") {
+            pendingOnboardSlot = onboard.slot
+            keyCaptureDialog.open(selectedProfile, key)
+            return
+        }
+        stageOnboard(key, actionId)
+    }
+
     function selectButton(key) {
         if (selectedButton === key) {
             selectedButton = ""
@@ -406,11 +511,20 @@ Item {
             selectedActionId = ""
             return
         }
+        var onboard = onboardButtonFor(key)
         var mapping = mappingFor(key)
+        if (onboard) {
+            selectedButton = key
+            selectedButtonName = mapping ? mapping.name : onboard.name
+            selectedActionId = onboard.actionId
+            deviceViewIndex = viewIndexForButton(key)
+            return
+        }
         if (mapping) {
             selectedButton = key
             selectedButtonName = mapping.name
             selectedActionId = mapping.actionId
+            deviceViewIndex = viewIndexForButton(key)
         }
     }
 
@@ -439,8 +553,29 @@ Item {
             }
         }
     }
+    Connections {
+        target: backend.g502
+        function onSaved(slot, action) {
+            var drafts = Object.assign({}, onboardDrafts)
+            var rows = backend.g502.buttons
+            for (var i = 0; i < rows.length; i++) {
+                if (rows[i].slot === slot && drafts[rows[i].key] === action)
+                    delete drafts[rows[i].key]
+            }
+            onboardDrafts = drafts
+        }
+        function onSupportedChanged() { onboardDrafts = ({}); pendingOnboardSlot = -1 }
+        function onStateChanged() {
+            var onboard = onboardButtonFor(selectedButton)
+            if (onboard)
+                selectedActionId = onboard.actionId
+        }
+    }
 
     function actionFor(key) {
+        var onboard = onboardButtonFor(key)
+        if (onboard)
+            return lm.trAction(onboard.actionLabel)
         var mapping = mappingFor(key)
         if (mapping)
             return lm.trAction(mapping.actionLabel)
@@ -448,6 +583,9 @@ Item {
     }
 
     function actionFor_id(key) {
+        var onboard = onboardButtonFor(key)
+        if (onboard)
+            return onboard.actionId || "none"
         var mapping = mappingFor(key)
         if (mapping)
             return mapping.actionId
@@ -497,11 +635,50 @@ Item {
         return actionFor(hotspot.buttonKey)
     }
 
+    property int deviceViewIndex: 0
+    readonly property var currentDeviceView: {
+        var views = backend.deviceViews
+        if (!views || views.length === 0)
+            return {
+                "id": "main",
+                "label": "",
+                "imageSource": backend.deviceImageSource,
+                "imageWidth": backend.deviceImageWidth,
+                "imageHeight": backend.deviceImageHeight,
+                "hotspots": backend.deviceHotspots
+            }
+        var i = Math.max(0, Math.min(deviceViewIndex, views.length - 1))
+        return views[i]
+    }
+    readonly property bool hasMultipleDeviceViews: backend.deviceViews.length > 1
+
+    function viewIndexForButton(buttonKey) {
+        var views = backend.deviceViews
+        for (var i = 0; i < views.length; i++) {
+            var hotspots = views[i].hotspots || []
+            for (var j = 0; j < hotspots.length; j++) {
+                if (hotspots[j].buttonKey === buttonKey)
+                    return i
+            }
+        }
+        return deviceViewIndex
+    }
+
+    function cycleDeviceView(delta) {
+        var n = backend.deviceViews.length
+        if (n <= 1)
+            return
+        deviceViewIndex = (deviceViewIndex + delta + n) % n
+    }
+
     function layoutHasButton(buttonKey) {
-        var hotspots = backend.deviceHotspots
-        for (var i = 0; i < hotspots.length; i++) {
-            if (hotspots[i].buttonKey === buttonKey)
-                return true
+        var views = backend.deviceViews
+        for (var v = 0; v < views.length; v++) {
+            var hotspots = views[v].hotspots || []
+            for (var i = 0; i < hotspots.length; i++) {
+                if (hotspots[i].buttonKey === buttonKey)
+                    return true
+            }
         }
         return false
     }
@@ -526,7 +703,9 @@ Item {
     Connections {
         target: backend
         function onDeviceLayoutChanged() {
-            if (selectedButton !== "" && !layoutHasButton(selectedButton)) {
+            deviceViewIndex = 0
+            if (selectedButton !== "" && !layoutHasButton(selectedButton)
+                    && !(backend.hscrollInMiddle && selectedButton === "hscroll_left")) {
                 selectedButton = ""
                 selectedButtonName = ""
                 selectedActionId = ""
@@ -552,11 +731,19 @@ Item {
         return 0
     }
     readonly property var physicalButtons: {
+        var g502Buttons = backend.g502.buttons
+        var g502Supported = backend.g502.supported
         var keys = backend.hapticButtonRows.map(function(row) { return row.key })
         keys.push("hscroll_left")
-        return backend.getProfileMappings(selectedProfile).filter(function(row) {
+        var hideHScroll = backend.hscrollInMiddle
+        var rows = backend.getProfileMappings(selectedProfile).filter(function(row) {
+            if (hideHScroll && (row.key === "hscroll_left" || row.key === "hscroll_right"))
+                return false
             return keys.indexOf(row.key) !== -1
         })
+        if (g502Supported || backend.effectiveDeviceLayoutKey === "g502_x_plus")
+            return rows.concat(mousePage.g502ExtraButtons())
+        return rows
     }
     function selectedHapticEnabled() {
         var rows = backend.hapticEnabledButtons
@@ -578,6 +765,7 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
+            visible: !mousePage.g502OnboardActive()
             Text { text: s["ui.edit_profile"]; font { family: uiState.fontFamily; pixelSize: 14 } color: theme.textPrimary }
             SettingsComboBox {
                 objectName: "profileSelector"
@@ -606,11 +794,30 @@ Item {
             }
         }
         Text {
-            text: selectedProfile === "default" ? s["ui.default_profile_hint"] : s["ui.app_profile_hint"]
+            text: mousePage.g502OnboardActive() ? s["mouse.onboard_scope"] : (selectedProfile === "default" ? s["ui.default_profile_hint"] : s["ui.app_profile_hint"])
             font { family: uiState.fontFamily; pixelSize: 12 }
             color: theme.textSecondary
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
+        }
+        RowLayout {
+            visible: mousePage.g502OnboardActive()
+            Layout.fillWidth: true
+            Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: backend.g502.busy ? s["mouse.onboard_reading"]
+                    : backend.g502.error !== "" ? (lm.strings, lm.trStatus(backend.g502.error))
+                    : !backend.g502.state.writable ? s["mouse.onboard_readonly"]
+                    : (lm.strings, lm.trStatus(backend.g502.message))
+                color: backend.g502.error !== "" ? theme.danger : theme.textSecondary
+                font { family: uiState.fontFamily; pixelSize: 12 }
+            }
+            SettingsButton {
+                text: s["mouse.onboard_refresh"]
+                enabled: backend.g502.supported && !backend.g502.busy
+                onClicked: backend.g502.refresh()
+            }
         }
         Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: theme.border }
         RowLayout {
@@ -626,6 +833,67 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumWidth: 260
+                RowLayout {
+                    visible: backend.mouseConnected && hasMultipleDeviceViews
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignHCenter
+                    spacing: 12
+                    Button {
+                        objectName: "previousDeviceView"
+                        implicitWidth: 36
+                        implicitHeight: 36
+                        text: "<"
+                        flat: true
+                        font { family: uiState.fontFamily; pixelSize: 16 }
+                        Accessible.name: s["mouse.previous_view"]
+                        onClicked: cycleDeviceView(-1)
+                        background: Rectangle {
+                            radius: 18
+                            color: parent.hovered ? theme.bgCardHover : theme.bgCard
+                            border.width: 1
+                            border.color: theme.border
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: theme.textPrimary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            font: parent.font
+                        }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                        text: currentDeviceView.id === "side"
+                              ? s["mouse.view_side"]
+                              : s["mouse.view_front"]
+                        font { family: uiState.fontFamily; pixelSize: 13 }
+                        color: theme.textPrimary
+                    }
+                    Button {
+                        objectName: "nextDeviceView"
+                        implicitWidth: 36
+                        implicitHeight: 36
+                        text: ">"
+                        flat: true
+                        font { family: uiState.fontFamily; pixelSize: 16 }
+                        Accessible.name: s["mouse.next_view"]
+                        onClicked: cycleDeviceView(1)
+                        background: Rectangle {
+                            radius: 18
+                            color: parent.hovered ? theme.bgCardHover : theme.bgCard
+                            border.width: 1
+                            border.color: theme.border
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: theme.textPrimary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            font: parent.font
+                        }
+                    }
+                }
                 Item {
                     id: mouseImageArea
                     objectName: "mousePreview"
@@ -633,10 +901,10 @@ Item {
                     Layout.fillHeight: true
                     Image {
                         id: mouseImg
-                        source: backend.deviceImageSource
+                        source: currentDeviceView.imageSource
                         fillMode: Image.PreserveAspectFit
-                        width: Math.min(backend.deviceImageWidth, parent.width - 24)
-                        height: Math.min(backend.deviceImageHeight, parent.height - 24)
+                        width: Math.min(currentDeviceView.imageWidth, parent.width - 24)
+                        height: Math.min(currentDeviceView.imageHeight, parent.height - 24)
                         anchors.centerIn: parent
                         visible: backend.mouseConnected
                         smooth: true; mipmap: true; asynchronous: true
@@ -644,7 +912,7 @@ Item {
                         property real offY: (height - paintedHeight) / 2
                     }
                     Repeater {
-                        model: backend.mouseConnected && backend.hasInteractiveDeviceLayout ? backend.deviceHotspots : []
+                        model: backend.mouseConnected && backend.hasInteractiveDeviceLayout ? (currentDeviceView.hotspots || []) : []
                         HotspotDot {
                             required property var modelData
                             anchors.fill: mouseImageArea
@@ -771,6 +1039,8 @@ Item {
                                     Text {
                                         text: selectedButton === "hscroll_left"
                                               ? s["mouse.configure_scroll_actions"]
+                                              : isOnboardOnlyButton
+                                                ? s["mouse.select_onboard_action"]
                                               : isSwipeButton
                                                 && backend.supportsGestureDirections
                                                 ? s["mouse.configure_gesture"]
@@ -785,36 +1055,97 @@ Item {
 
                             // Horizontal scroll: left + right rows
                             Column {
-    width: parent.width
-    spacing: 12
-    visible: selectedButton === "hscroll_left"
-    Repeater {
-        model: [
-            {key: "hscroll_left", label: s["mouse.scroll_left"], aid: hscrollLeftActionId},
-            {key: "hscroll_right", label: s["mouse.scroll_right"], aid: hscrollRightActionId}
-        ]
-        Column {
-            required property var modelData
-            width: parent.width
-            spacing: 6
-            Text { text: modelData.label; font { family: uiState.fontFamily; pixelSize: 14 } color: theme.textPrimary }
-            SettingsComboBox {
-                width: parent.width
-                model: backend.allActions
-                textRole: "label"
-                delegate: actionComboDelegate
-                font { family: uiState.fontFamily; pixelSize: 13 }
-                currentIndex: actionIndexForId(modelData.aid)
-                displayText: isCustomAction(modelData.aid) ? customLabel(modelData.aid) : (lm.strings, lm.trAction(currentText))
-                onActivated: function(index) {
-                    var aid = backend.allActions[index].id
-                    if (aid === "__custom__") { keyCaptureDialog.open(selectedProfile, modelData.key); return }
-                    backend.setProfileMapping(selectedProfile, modelData.key, aid)
-                }
-            }
-        }
-    }
-}
+                                width: parent.width
+                                spacing: 12
+                                visible: (selectedButton === "hscroll_left"
+                                         || (backend.hscrollInMiddle && selectedButton === "middle"))
+                                         && mousePage.onboardButtonFor("hscroll_left") === null
+                                Text {
+                                    visible: backend.hscrollInMiddle && selectedButton === "middle"
+                                    text: s["mouse.configure_scroll_actions"]
+                                    wrapMode: Text.WordWrap
+                                    width: parent.width
+                                    font { family: uiState.fontFamily; pixelSize: 12 }
+                                    color: theme.textSecondary
+                                }
+                                Repeater {
+                                    model: [
+                                        {key: "hscroll_left", label: s["mouse.scroll_left"], aid: hscrollLeftActionId},
+                                        {key: "hscroll_right", label: s["mouse.scroll_right"], aid: hscrollRightActionId}
+                                    ]
+                                    Column {
+                                        required property var modelData
+                                        width: parent.width
+                                        spacing: 6
+                                        Text { text: modelData.label; font { family: uiState.fontFamily; pixelSize: 14 } color: theme.textPrimary }
+                                        SettingsComboBox {
+                                            width: parent.width
+                                            model: backend.allActions
+                                            textRole: "label"
+                                            delegate: actionComboDelegate
+                                            font { family: uiState.fontFamily; pixelSize: 13 }
+                                            currentIndex: actionIndexForId(modelData.aid)
+                                            displayText: isCustomAction(modelData.aid) ? customLabel(modelData.aid) : (lm.strings, lm.trAction(currentText))
+                                            onActivated: function(index) {
+                                                var aid = backend.allActions[index].id
+                                                if (aid === "__custom__") { keyCaptureDialog.open(selectedProfile, modelData.key); return }
+                                                backend.setProfileMapping(selectedProfile, modelData.key, aid)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Column {
+                                width: parent.width
+                                spacing: 12
+                                visible: (selectedButton === "hscroll_left"
+                                         || (backend.hscrollInMiddle && selectedButton === "middle"))
+                                         && mousePage.onboardButtonFor("hscroll_left") !== null
+                                Text {
+                                    visible: backend.hscrollInMiddle && selectedButton === "middle"
+                                    text: s["mouse.configure_scroll_actions"]
+                                    wrapMode: Text.WordWrap
+                                    width: parent.width
+                                    font { family: uiState.fontFamily; pixelSize: 12 }
+                                    color: theme.textSecondary
+                                }
+                                Repeater {
+                                    model: [
+                                        {key: "hscroll_left", label: s["mouse.scroll_left"]},
+                                        {key: "hscroll_right", label: s["mouse.scroll_right"]}
+                                    ]
+                                    Column {
+                                        required property var modelData
+                                        width: parent.width
+                                        spacing: 6
+                                        Text { text: modelData.label; font { family: uiState.fontFamily; pixelSize: 14 } color: theme.textPrimary }
+                                        SettingsComboBox {
+                                            objectName: modelData.key === "hscroll_left"
+                                                        ? "onboardHScrollLeftCombo"
+                                                        : "onboardHScrollRightCombo"
+                                            width: parent.width
+                                            enabled: backend.g502.supported && !backend.g502.busy && !!backend.g502.state.writable
+                                            model: backend.g502.actions
+                                            textRole: "label"
+                                            delegate: actionComboDelegate
+                                            font { family: uiState.fontFamily; pixelSize: 13 }
+                                            currentIndex: mousePage.onboardActionIndexFor(modelData.key)
+                                            displayText: mousePage.onboardDisplayText(modelData.key, currentText)
+                                            onActivated: function(index) {
+                                                var row = backend.g502.actions[index]
+                                                if (row)
+                                                    mousePage.saveOnboardForKey(modelData.key, row.id)
+                                            }
+                                        }
+                                        SettingsButton {
+                                            text: s["mouse.onboard_save"]
+                                            enabled: backend.g502.supported && !backend.g502.busy && !!backend.g502.state.writable && mousePage.hasOnboardDraft(modelData.key)
+                                            onClicked: mousePage.commitOnboard(modelData.key)
+                                        }
+                                    }
+                                }
+                            }
 
 
                             Column {
@@ -1045,11 +1376,69 @@ Item {
                                 }
                             }
 
+                            Column {
+                                width: parent.width
+                                spacing: 12
+                                visible: isOnboardOnlyButton
+                                Text {
+                                    width: parent.width
+                                    wrapMode: Text.WordWrap
+                                    text: s["mouse.onboard_hint"]
+                                    font { family: uiState.fontFamily; pixelSize: 12 }
+                                    color: theme.textSecondary
+                                }
+                                SettingsComboBox {
+                                    objectName: "onboardActionCombo"
+                                    width: parent.width
+                                    enabled: backend.g502.supported && !backend.g502.busy && !!backend.g502.state.writable
+                                    model: backend.g502.actions
+                                    textRole: "label"
+                                    delegate: actionComboDelegate
+                                    font { family: uiState.fontFamily; pixelSize: 14 }
+                                    currentIndex: mousePage.onboardActionIndex()
+                                    displayText: mousePage.onboardDisplayText(selectedButton, currentText)
+                                    onActivated: function(index) {
+                                        var row = backend.g502.actions[index]
+                                        if (row)
+                                            mousePage.saveOnboardForKey(selectedButton, row.id)
+                                    }
+                                }
+                                SettingsButton {
+                                    text: s["mouse.onboard_save"]
+                                    enabled: backend.g502.supported && !backend.g502.busy && !!backend.g502.state.writable && mousePage.hasOnboardDraft(selectedButton)
+                                    onClicked: mousePage.commitOnboard(selectedButton)
+                                }
+                                Text {
+                                    width: parent.width
+                                    visible: backend.g502.busy
+                                    wrapMode: Text.WordWrap
+                                    text: s["mouse.onboard_reading"]
+                                    font { family: uiState.fontFamily; pixelSize: 12 }
+                                    color: theme.textSecondary
+                                }
+                                Text {
+                                    width: parent.width
+                                    visible: backend.g502.error !== ""
+                                    wrapMode: Text.WordWrap
+                                    text: (lm.strings, lm.trStatus(backend.g502.error))
+                                    font { family: uiState.fontFamily; pixelSize: 12 }
+                                    color: theme.danger
+                                }
+                                Text {
+                                    width: parent.width
+                                    visible: backend.g502.message !== ""
+                                    wrapMode: Text.WordWrap
+                                    text: (lm.strings, lm.trStatus(backend.g502.message))
+                                    font { family: uiState.fontFamily; pixelSize: 12 }
+                                    color: theme.textSecondary
+                                }
+                            }
+
                             // Single button: categorized chips
                             Column {
     width: parent.width
     spacing: 12
-    visible: selectedButton !== "" && selectedButton !== "hscroll_left" && !isGestureSwipeMode
+    visible: selectedButton !== "" && selectedButton !== "hscroll_left" && !isGestureSwipeMode && !isOnboardOnlyButton
     Text {
         text: s["ui.execute_action"]
         font { family: uiState.fontFamily; pixelSize: 14; weight: Font.DemiBold }
@@ -1387,7 +1776,7 @@ Item {
                     }
                     SettingRow {
                         width: parent.width
-                        visible: backend.hapticSupported && selectedButton !== "" && selectedButton !== "hscroll_left"
+                        visible: backend.hapticSupported && selectedButton !== "" && selectedButton !== "hscroll_left" && !isOnboardOnlyButton
                         label: s["ui.haptic_on_press"]
                         enabled: backend.hapticEnabled
                         SettingsSwitch {
@@ -2318,6 +2707,15 @@ Rectangle {
         id: keyCaptureDialog
         objectName: "shortcutCaptureDialog"
         onCaptured: function(comboString) {
+            if (mousePage.pendingOnboardSlot >= 0) {
+                var rows = backend.g502.buttons
+                for (var i = 0; i < rows.length; i++) {
+                    if (rows[i].slot === mousePage.pendingOnboardSlot)
+                        mousePage.stageOnboard(rows[i].key, "shortcut:" + comboString)
+                }
+                mousePage.pendingOnboardSlot = -1
+                return
+            }
             backend.setProfileMapping(
                 keyCaptureDialog.targetProfile,
                 keyCaptureDialog.targetButton,
@@ -2325,5 +2723,6 @@ Rectangle {
             refreshSelectedProfileMappings()
             selectedActionId = "custom:" + comboString
         }
+        onCancelled: mousePage.pendingOnboardSlot = -1
     }
 }

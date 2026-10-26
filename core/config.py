@@ -7,9 +7,9 @@ import json
 import os
 import stat
 import sys
-import tempfile
 from urllib.parse import quote
 from core import app_catalog
+from core.atomic_file import create_atomic_temp
 
 if sys.platform == "darwin":
     CONFIG_DIR = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "Mouser")
@@ -367,7 +367,7 @@ def _atomic_write_json(path, obj):
     ensure_config_dir()
     target_path = os.path.realpath(path)
     target_dir = os.path.dirname(target_path) or CONFIG_DIR
-    fd, tmp_path = tempfile.mkstemp(suffix=".tmp", dir=target_dir)
+    fd, tmp_path = create_atomic_temp(suffix=".tmp", dir=target_dir)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(obj, f, indent=2)

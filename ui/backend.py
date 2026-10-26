@@ -25,6 +25,7 @@ from core.config import (
     GESTURE_SWIPE_ACTION, SWIPE_CAPABLE_BUTTONS, GESTURE_SWIPE_DIRECTIONS,
 )
 from core import app_catalog
+from ui.g502_backend import G502Backend
 from core.device_layouts import get_device_layout, get_manual_layout_choices
 from core.key_capture import create_super_key_guard
 from core.key_registry import (
@@ -295,6 +296,7 @@ class Backend(QObject):
         self._connected_device_key = ""
         self._device_layout_override_key = ""
         self._device_layout = get_device_layout("generic_mouse")
+        self._g502 = G502Backend(self)
         self._device_dpi_min = DEFAULT_DPI_MIN
         self._device_dpi_max = DEFAULT_DPI_MAX
         self._connected_device_source = ""
@@ -1048,6 +1050,10 @@ class Backend(QObject):
     def hidFeaturesReady(self):
         return self._hid_features_ready
 
+    @Property(QObject, constant=True)
+    def g502(self):
+        return self._g502
+
     @Property(str, notify=deviceInfoChanged)
     def deviceDisplayName(self):
         return self._device_display_name
@@ -1068,15 +1074,19 @@ class Backend(QObject):
     def deviceDpiMax(self):
         return self._device_dpi_max
 
+    def _layout_image_source(self, asset):
+        path = os.path.join(self._root_dir, "images", asset)
+        return QUrl.fromLocalFile(os.path.abspath(path)).toString()
+
     @Property(str, notify=deviceLayoutChanged)
     def deviceImageAsset(self):
         return self._device_layout.get("image_asset", "mouse.png")
 
     @Property(str, notify=deviceLayoutChanged)
     def deviceImageSource(self):
-        asset = self._device_layout.get("image_asset", "mouse.png")
-        path = os.path.join(self._root_dir, "images", asset)
-        return QUrl.fromLocalFile(os.path.abspath(path)).toString()
+        return self._layout_image_source(
+            self._device_layout.get("image_asset", "mouse.png")
+        )
 
     @Property(int, notify=deviceLayoutChanged)
     def deviceImageWidth(self):
@@ -1097,6 +1107,37 @@ class Backend(QObject):
     @Property(list, notify=deviceLayoutChanged)
     def deviceHotspots(self):
         return list(self._device_layout.get("hotspots", []))
+
+    @Property(list, notify=deviceLayoutChanged)
+    def deviceViews(self):
+        layout = self._device_layout
+        views = layout.get("views") or []
+        if not views:
+            views = [{
+                "id": "main",
+                "label": "",
+                "image_asset": layout.get("image_asset", "mouse.png"),
+                "image_width": int(layout.get("image_width", 460)),
+                "image_height": int(layout.get("image_height", 360)),
+                "hotspots": list(layout.get("hotspots", [])),
+            }]
+        out = []
+        for view in views:
+            asset = view.get("image_asset", layout.get("image_asset", "mouse.png"))
+            out.append({
+                "id": view.get("id", "main"),
+                "label": view.get("label", ""),
+                "imageAsset": asset,
+                "imageSource": self._layout_image_source(asset),
+                "imageWidth": int(view.get("image_width", layout.get("image_width", 460))),
+                "imageHeight": int(view.get("image_height", layout.get("image_height", 360))),
+                "hotspots": list(view.get("hotspots", [])),
+            })
+        return out
+
+    @Property(bool, notify=deviceLayoutChanged)
+    def hscrollInMiddle(self):
+        return bool(self._device_layout.get("hscroll_in_middle"))
 
     @Property(list, constant=True)
     def manualLayoutChoices(self):
@@ -1330,7 +1371,12 @@ class Backend(QObject):
         self._cfg.setdefault("settings", {})["update_check_state"] = (
             self._update_state.to_dict()
         )
-        save_config(self._cfg)
+        try:
+            save_config(self._cfg)
+        except OSError as exc:
+            # Update metadata is optional; a denied config write must not
+            # prevent startup or completing a manual update check.
+            print(f"[Update] Could not persist update-check state: {exc}")
 
     @Slot(str, str, bool, object)
     def _handleUpdateAvailable(self, version, url, manual, state_data):
@@ -2609,7 +2655,13 @@ class Backend(QObject):
         override_key = overrides.get(device_key, "") if device_key else ""
         if override_key not in valid_override_keys:
             override_key = ""
-        layout_key = override_key or getattr(device, "ui_layout", None) or "generic_mouse"
+        detected_layout = getattr(device, "ui_layout", None) or "generic_mouse"
+        if (
+            getattr(device, "key", "") == "g502_x_plus"
+            or getattr(device, "product_name", "") == "G502 X PLUS"
+        ):
+            detected_layout = "g502_x_plus"
+        layout_key = override_key or detected_layout
         layout = get_device_layout(layout_key)
         layout_changed = False
         if override_key != self._device_layout_override_key:

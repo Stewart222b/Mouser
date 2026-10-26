@@ -12,6 +12,7 @@ from unittest.mock import Mock, patch
 
 from PySide6.QtCore import QCoreApplication, QPoint
 from core.config import DEFAULT_CONFIG, BUTTON_NAMES, PROFILE_BUTTON_NAMES
+from core.g502_onboard import CONTROLS, action_choices
 from core.key_simulator import ACTIONS
 from ui.actions_ring_overlay import RING_LABEL_MAP
 from ui.backend import Backend
@@ -75,6 +76,21 @@ class LocalizationCoverageTests(unittest.TestCase):
             self.assertNotRegex(" ".join(manager.strings.values()), "动作环|動作環")
             self.assertEqual(manager.trProfile("custom", "动作环"), "动作环")
             self.assertEqual(manager.trAction("activate_actions_ring"), "activate_actions_ring")
+
+    def test_g502_onboard_labels_are_localized(self):
+        brand = {"DPI Shift", "G-Shift"}
+        for locale in ("zh_CN", "zh_TW"):
+            manager = LocaleManager(locale)
+            for _slot, _key, name, _view, _standard in CONTROLS:
+                with self.subTest(locale=locale, button=name):
+                    self.assertRegex(manager.trButton(name), r"[\u3400-\u9fff]")
+            for row in action_choices():
+                with self.subTest(locale=locale, action=row["label"]):
+                    translated = manager.trAction(row["label"])
+                    if row["label"] in brand:
+                        self.assertEqual(translated, row["label"])
+                    else:
+                        self.assertRegex(translated, r"[\u3400-\u9fff]")
 
     def test_default_profile_localization_preserves_user_names(self):
         manager = LocaleManager("zh_CN")

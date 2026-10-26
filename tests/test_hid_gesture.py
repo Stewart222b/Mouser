@@ -128,6 +128,121 @@ class GestureCandidateSelectionTests(unittest.TestCase):
         )
 
 
+class BatteryDiscoveryTests(unittest.TestCase):
+    @staticmethod
+    def _printed_messages(print_mock):
+        return [
+            " ".join(str(arg) for arg in call.args)
+            for call in print_mock.call_args_list
+        ]
+
+    def test_prefers_unified_battery_over_status(self):
+        listener = hid_gesture.HidGestureListener()
+
+        def fake_find_feature(feature_id, *, timeout_ms=None):
+            if feature_id == hid_gesture.FEAT_UNIFIED_BATT:
+                return 0x06
+            if feature_id == hid_gesture.FEAT_BATTERY_STATUS:
+                return 0x07
+            return None
+
+        with (
+            patch.object(listener, "_find_feature", side_effect=fake_find_feature),
+            patch("builtins.print"),
+        ):
+            self.assertTrue(listener._discover_battery_feature())
+
+        self.assertEqual(listener._battery_idx, 0x06)
+        self.assertEqual(
+            listener._battery_feature_id, hid_gesture.FEAT_UNIFIED_BATT
+        )
+
+    def test_falls_back_to_battery_status(self):
+        listener = hid_gesture.HidGestureListener()
+
+        def fake_find_feature(feature_id, *, timeout_ms=None):
+            if feature_id == hid_gesture.FEAT_BATTERY_STATUS:
+                return 0x08
+            return None
+
+        with (
+            patch.object(listener, "_find_feature", side_effect=fake_find_feature),
+            patch("builtins.print"),
+        ):
+            self.assertTrue(listener._discover_battery_feature())
+
+        self.assertEqual(listener._battery_idx, 0x08)
+        self.assertEqual(
+            listener._battery_feature_id, hid_gesture.FEAT_BATTERY_STATUS
+        )
+
+    def test_clears_battery_when_feature_absent(self):
+        listener = hid_gesture.HidGestureListener()
+        listener._battery_idx = 0x06
+        listener._battery_feature_id = hid_gesture.FEAT_UNIFIED_BATT
+
+        with (
+            patch.object(listener, "_find_feature", return_value=None),
+            patch("builtins.print"),
+        ):
+            self.assertFalse(listener._discover_battery_feature())
+
+        self.assertIsNone(listener._battery_idx)
+        self.assertIsNone(listener._battery_feature_id)
+
+    def test_g502_os_level_connect_discovers_battery_without_reprog(self):
+        """G502 X PLUS stays on OS-level buttons, but HID++ battery is
+        still readable the same way G Hub reads it."""
+        listener = hid_gesture.HidGestureListener()
+        info = {
+            "product_id": hid_gesture.LIGHTSPEED_RECEIVER_PID,
+            "usage_page": 0xFF00,
+            "usage": 0x0002,
+            "source": "hidapi-enumerate",
+            "product_string": "USB Receiver",
+            "path": b"/dev/hidraw-g502",
+        }
+        fake_dev = _FakeHidDevice()
+
+        def fake_find_feature(feature_id, *, timeout_ms=None):
+            if feature_id == hid_gesture.FEAT_UNIFIED_BATT:
+                return 0x06
+            return None
+
+        with (
+            patch.object(listener, "_vendor_hid_infos", return_value=[info]),
+            patch.object(listener, "_find_feature", side_effect=fake_find_feature),
+            patch.object(listener, "_query_device_name", return_value="G502 X PLUS"),
+            patch.object(hid_gesture, "_save_last_device_cache"),
+            patch.object(hid_gesture, "HIDAPI_OK", True),
+            patch.object(hid_gesture, "_BACKEND_PREFERENCE", "hidapi"),
+            patch.object(hid_gesture, "_HID_API_STYLE", "hidapi"),
+            patch.object(
+                hid_gesture,
+                "_hid",
+                SimpleNamespace(device=lambda: fake_dev),
+                create=True,
+            ),
+            patch("builtins.print") as print_mock,
+        ):
+            self.assertTrue(listener._try_connect())
+
+        self.assertIsNone(listener._feat_idx)
+        self.assertEqual(listener._battery_idx, 0x06)
+        self.assertEqual(
+            listener._battery_feature_id, hid_gesture.FEAT_UNIFIED_BATT
+        )
+        self.assertEqual(listener.connected_device.display_name, "G502 X PLUS")
+        self.assertTrue(listener.connected_device.capability_inventory.battery)
+        messages = self._printed_messages(print_mock)
+        self.assertTrue(
+            any("without diverting mouse controls" in message for message in messages)
+        )
+        self.assertTrue(
+            any("Found UNIFIED_BATT" in message for message in messages)
+        )
+
+
 class DeviceInfoDumpTests(unittest.TestCase):
     def test_dump_device_info_includes_runtime_capability_inventory(self):
         listener = hid_gesture.HidGestureListener()
@@ -1322,6 +1437,58 @@ class HidReconnectStormTests(unittest.TestCase):
         start = time.monotonic()
         listener._interruptible_sleep(5)
         self.assertLess(time.monotonic() - start, 0.5)
+
+
+class ReceiverWakeRecoveryTests(unittest.TestCase):
+    def run_session(self, layout):
+        listener = hid_gesture.HidGestureListener()
+        listener._running = True
+        listener._on_connect = Mock()
+        listener._on_disconnect = Mock()
+        probes = []
+        reads = []
+
+        def connect():
+            probes.append(True)
+            if len(probes) > 1:
+                listener._running = False
+                return False
+            listener._connected_device_info = SimpleNamespace(ui_layout=layout)
+            listener._dev = Mock()
+            return True
+
+        def receive(_timeout):
+            reads.append(True)
+            if len(reads) == 1:
+                listener._consecutive_request_timeouts = 3
+                return None
+            listener._running = False
+            return [0x11, 1, 1, 0, 0]
+
+        with (
+            patch.object(hid_gesture, 'HIDAPI_OK', True),
+            patch.object(listener, '_try_connect', side_effect=connect),
+            patch.object(listener, '_rx', side_effect=receive),
+            patch.object(listener, '_undivert'),
+            patch.object(listener, '_on_report'),
+            patch.object(listener, '_interruptible_sleep'),
+            patch('builtins.print'),
+        ):
+            listener._main_loop()
+        return listener, probes, reads
+
+    def test_g502_reprobes_instead_of_waiting_for_unavailable_notifications(self):
+        listener, probes, reads = self.run_session('g502_x_plus')
+        self.assertEqual(len(probes), 2)
+        self.assertEqual(len(reads), 1)
+        self.assertEqual(listener._on_connect.call_count, 1)
+        self.assertEqual(listener._on_disconnect.call_count, 1)
+
+    def test_mx_master_retains_notification_wake_path(self):
+        listener, probes, reads = self.run_session('mx_master_4')
+        self.assertEqual(len(probes), 1)
+        self.assertEqual(len(reads), 2)
+        self.assertEqual(listener._on_connect.call_count, 2)
 
 
 if __name__ == "__main__":

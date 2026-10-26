@@ -8,6 +8,8 @@
 
 这是由 [Stewart222b](https://github.com/Stewart222b) 独立维护的项目，当前优先面向 **Windows + MX Master 4 蓝牙连接**。保留已有 Logitech HID++ 设备支持；其他型号、连接方式与操作系统需要分别验证。
 
+新增 **G502 X PLUS + LIGHTSPEED 接收器**支持，目前以 Windows 预发布版提供。它使用全局板载按键、日常／闲置灯光设置；Master 4 继续使用原有的按应用映射和震动功能。一个程序支持两种机型，不代表同时独立管理两只鼠标。
+
 项目源自 [TomBadash/Mouser](https://github.com/TomBadash/Mouser)，保留原作者的 MIT 许可证、版权声明。
 
 ## 已完成的体验改进
@@ -29,9 +31,11 @@
 
 当前正式版本为 **3.8.12 · Windows x64**。在 [v3.8.12 Release](https://github.com/Stewart222b/Mouser/releases/tag/v3.8.12) 下载 [Mouser-Windows.zip](https://github.com/Stewart222b/Mouser/releases/download/v3.8.12/Mouser-Windows.zip)。
 
+试用 G502 X PLUS 新功能可下载 [v3.8.13-rc.1 Windows 预发布版](https://github.com/Stewart222b/Mouser/releases/tag/windows-v3.8.13-rc.1)。该版的验证范围和限制见发布说明，不替换稳定版自动更新入口。
+
 升级前退出 Mouser，将压缩包解压到新目录，保留完整的 `Mouser/` 文件夹并运行其中的 `Mouser.exe`。已有配置保留在用户应用数据目录。`SHA256SUMS.txt` 提供文件校验值。
 
-正式版本见[本项目 Releases](https://github.com/Stewart222b/Mouser/releases)。[Master4 Windows 构建](https://github.com/Stewart222b/Mouser/actions/workflows/custom-windows.yml) 中的 Artifact 用于获取尚未正式发布的构建。程序内更新检查指向本仓库。
+正式版本见[本项目 Releases](https://github.com/Stewart222b/Mouser/releases)。[Windows 构建](https://github.com/Stewart222b/Mouser/actions/workflows/custom-windows.yml) 中的 Artifact 用于获取尚未正式发布的构建。程序内更新检查指向本仓库。
 
 Logi Options+ 与 Mouser 同时控制同一设备可能冲突，应避免同时运行。
 

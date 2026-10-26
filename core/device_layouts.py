@@ -229,6 +229,16 @@ _FAMILY_FALLBACKS = {
 }
 
 
+def iter_layout_views(layout):
+    """Yield ``(view, hotspots)`` for overlap checks and asset tests."""
+    views = layout.get("views") or []
+    if views:
+        for view in views:
+            yield view, view.get("hotspots", [])
+        return
+    yield layout, layout.get("hotspots", [])
+
+
 def get_device_layout(layout_key=None):
     """Return the layout dict for *layout_key* with a fallback chain.
 

@@ -16,6 +16,12 @@ class MainQmlShortcutGuardTests(unittest.TestCase):
         self.assertIn("addAppDialog.visible", MOUSE_PAGE_QML)
         self.assertIn("deleteDialog.visible", MOUSE_PAGE_QML)
 
+    def test_g502_os_buttons_use_onboard_editor(self):
+        self.assertIn("function saveOnboardForKey", MOUSE_PAGE_QML)
+        self.assertIn("onboardHScrollLeftCombo", MOUSE_PAGE_QML)
+        self.assertIn("onboardHScrollRightCombo", MOUSE_PAGE_QML)
+        self.assertIn('if (key === "g502_left" || key === "g502_right")', MOUSE_PAGE_QML)
+
     def test_hide_to_tray_shortcuts_are_window_scoped_and_gated(self):
         self.assertIn("readonly property bool shortcutsBlocked", MAIN_QML)
         self.assertIn("mousePageView.hasBlockingDialog", MAIN_QML)

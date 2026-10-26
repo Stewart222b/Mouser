@@ -834,6 +834,16 @@ def get_buttons_for_layout(ui_layout_key: str) -> tuple[str, ...] | None:
     return None
 
 
+def is_g502_family_layout(ui_layout) -> bool:
+    """True for G502 / G502 X / G502 X PLUS catalog layouts.
+
+    These mice keep button mapping on the OS path and skip REPROG_V4 divert.
+    HID++ connect used to require ``ui_layout == "g502"``; splitting PLUS
+    into ``g502_x_plus`` made a live Lightspeed receiver look disconnected.
+    """
+    return str(ui_layout or "").startswith("g502")
+
+
 def _resolve_capability(runtime: bool | None, catalog: bool) -> bool:
     """Tristate capability resolver: ``None`` defers to catalog; non-None wins.
 

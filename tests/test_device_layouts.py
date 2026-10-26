@@ -1,7 +1,12 @@
 import unittest
 from pathlib import Path
 
-from core.device_layouts import _FAMILY_FALLBACKS, get_device_layout, get_manual_layout_choices
+from core.device_layouts import (
+    _FAMILY_FALLBACKS,
+    get_device_layout,
+    get_manual_layout_choices,
+    iter_layout_views,
+)
 from core.logi_device_catalog import LOGI_DEVICE_LAYOUTS
 from core.logi_devices import KNOWN_LOGI_DEVICES
 
@@ -16,52 +21,63 @@ class DeviceLayoutTests(unittest.TestCase):
                 # Layouts with hotspot art must be interactive; placeholder
                 # layouts (device cataloged before artwork is contributed,
                 # per CONTRIBUTING_DEVICES.md step 3b) must not be.
-                if layout["hotspots"]:
+                has_hotspots = bool(layout["hotspots"]) or any(
+                    view.get("hotspots") for view in layout.get("views") or []
+                )
+                if has_hotspots:
                     self.assertTrue(layout["interactive"])
                 else:
                     self.assertFalse(layout["interactive"])
                 self.assertEqual(layout["key"], device.ui_layout)
-                self.assertTrue((image_root / layout["image_asset"]).is_file())
+                for view, _hotspots in iter_layout_views(layout):
+                    self.assertTrue((image_root / view["image_asset"]).is_file())
 
     def test_known_device_hotspots_are_supported_buttons(self):
         for device in KNOWN_LOGI_DEVICES:
             layout = get_device_layout(device.ui_layout)
             supported_buttons = set(device.supported_buttons)
-            for hotspot in layout["hotspots"]:
-                with self.subTest(device=device.key, button=hotspot["buttonKey"]):
-                    self.assertIn(hotspot["buttonKey"], supported_buttons)
+            for view, hotspots in iter_layout_views(layout):
+                for hotspot in hotspots:
+                    with self.subTest(
+                        device=device.key,
+                        view=view.get("id", "main"),
+                        button=hotspot["buttonKey"],
+                    ):
+                        self.assertIn(hotspot["buttonKey"], supported_buttons)
 
     def test_catalog_same_side_label_anchors_do_not_overlap(self):
         min_label_separation_px = 35
         for layout_key, layout in LOGI_DEVICE_LAYOUTS.items():
-            labels_by_side = {}
-            for hotspot in layout["hotspots"]:
-                side = hotspot.get("labelSide", "right")
-                label_y = (
-                    layout["image_height"] * hotspot["normY"]
-                    + hotspot.get("labelOffY", 0)
-                )
-                labels_by_side.setdefault(side, []).append(
-                    (label_y, hotspot["buttonKey"])
-                )
+            for view, hotspots in iter_layout_views(layout):
+                labels_by_side = {}
+                for hotspot in hotspots:
+                    side = hotspot.get("labelSide", "right")
+                    label_y = (
+                        view["image_height"] * hotspot["normY"]
+                        + hotspot.get("labelOffY", 0)
+                    )
+                    labels_by_side.setdefault(side, []).append(
+                        (label_y, hotspot["buttonKey"])
+                    )
 
-            for side, labels in labels_by_side.items():
-                labels.sort()
-                for (a_y, a_key), (b_y, b_key) in zip(labels, labels[1:]):
-                    gap = b_y - a_y
-                    with self.subTest(
-                        layout=layout_key,
-                        side=side,
-                        first=a_key,
-                        second=b_key,
-                    ):
-                        self.assertGreaterEqual(
-                            gap,
-                            min_label_separation_px,
-                            f"{layout_key}: {a_key} (Y={a_y:.1f}) and "
-                            f"{b_key} (Y={b_y:.1f}) on {side} side are "
-                            f"{gap:.1f}px apart",
-                        )
+                for side, labels in labels_by_side.items():
+                    labels.sort()
+                    for (a_y, a_key), (b_y, b_key) in zip(labels, labels[1:]):
+                        gap = b_y - a_y
+                        with self.subTest(
+                            layout=layout_key,
+                            view=view.get("id", "main"),
+                            side=side,
+                            first=a_key,
+                            second=b_key,
+                        ):
+                            self.assertGreaterEqual(
+                                gap,
+                                min_label_separation_px,
+                                f"{layout_key}: {a_key} (Y={a_y:.1f}) and "
+                                f"{b_key} (Y={b_y:.1f}) on {side} side are "
+                                f"{gap:.1f}px apart",
+                            )
 
     def test_master_layout_is_interactive(self):
         layout = get_device_layout("mx_master")
@@ -92,6 +108,7 @@ class DeviceLayoutTests(unittest.TestCase):
         choices = get_manual_layout_choices()
 
         self.assertIn({"key": "g502", "label": "G502 family"}, choices)
+        self.assertIn({"key": "g502_x_plus", "label": "G502 X PLUS"}, choices)
 
     def test_manual_choices_do_not_duplicate_layout_keys(self):
         keys = [choice["key"] for choice in get_manual_layout_choices() if choice["key"]]
@@ -239,6 +256,37 @@ class DeviceLayoutTests(unittest.TestCase):
         )
         self.assertIn("hscroll_left", hotspot_keys)
         self.assertIn("mode_shift", hotspot_keys)
+
+    def test_exact_g502_x_plus_layout_uses_catalog_asset(self):
+        layout = get_device_layout("g502_x_plus")
+        hotspot_keys = {hotspot["buttonKey"] for hotspot in layout["hotspots"]}
+
+        self.assertTrue(layout["interactive"])
+        self.assertEqual(layout["key"], "g502_x_plus")
+        self.assertEqual(
+            layout["image_asset"],
+            "logitech-mice/g502_x_plus/mouse.png",
+        )
+        self.assertEqual(
+            hotspot_keys,
+            {
+                "g502_dpi_up",
+                "g502_dpi_down",
+                "middle",
+                "g502_profile",
+            },
+        )
+        self.assertTrue(layout["hscroll_in_middle"])
+        views = {view["id"]: view for view in layout["views"]}
+        self.assertEqual(set(views), {"top", "side"})
+        self.assertEqual(
+            {hotspot["buttonKey"] for hotspot in views["side"]["hotspots"]},
+            {"g502_dpi_shift", "xbutton2", "xbutton1"},
+        )
+        self.assertNotIn("hscroll_left", hotspot_keys)
+        self.assertTrue(layout["manual_selectable"])
+        self.assertNotIn("gesture", hotspot_keys)
+        self.assertNotIn("mode_shift", hotspot_keys)
 
     def test_exact_mx_anywhere_3s_layout_uses_catalog_asset(self):
         layout = get_device_layout("mx_anywhere_3s")

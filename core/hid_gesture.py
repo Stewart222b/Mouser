@@ -21,12 +21,14 @@ import threading
 import time
 import weakref
 from dataclasses import replace as _dataclass_replace
+from core.atomic_file import create_atomic_temp
 
 from core.logi_devices import (
     DEFAULT_GESTURE_CIDS,
     _coerce_cid,
     build_connected_device_info,
     clamp_dpi,
+    is_g502_family_layout,
     resolve_device,
 )
 
@@ -128,7 +130,7 @@ def _save_last_device_cache(*, candidate: dict, device: dict) -> None:
     logged but never raised -- caching is a pure speedup."""
     path = _cache_path()
     try:
-        import json, tempfile
+        import json
         os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
         payload = {
             "version": _CACHE_SCHEMA_VERSION,
@@ -136,7 +138,7 @@ def _save_last_device_cache(*, candidate: dict, device: dict) -> None:
             "candidate": candidate,
             "device": device,
         }
-        fd, tmp = tempfile.mkstemp(
+        fd, tmp = create_atomic_temp(
             prefix=".last_device.", suffix=".tmp",
             dir=os.path.dirname(path),
         )
@@ -882,6 +884,9 @@ BT_DEV_IDX     = 0xFF        # device-index for direct Bluetooth
 # Known Logi Bolt receiver PID.
 # Source: https://github.com/pwr-Solaar/Solaar/blob/master/lib/logitech_receiver/base_usb.py
 BOLT_RECEIVER_PID = 0xC548
+# Logitech LIGHTSPEED receiver PID. G502 X PLUS is usually reached through
+# this receiver and is identified by its per-slot HID++ device name.
+LIGHTSPEED_RECEIVER_PID = 0xC547
 FEAT_IROOT     = 0x0000
 FEAT_REPROG_V4 = 0x1B04      # Reprogrammable Controls V4
 FEAT_ADJ_DPI   = 0x2201      # Adjustable DPI
@@ -1524,12 +1529,35 @@ class HidGestureListener:
                 return p[0]
         return None
 
-    def _query_device_name(self):
+    def _discover_battery_feature(self, timeout_ms=2000):
+        """Locate Unified Battery (0x1004) or Battery Status (0x1000).
+
+        This is a read-only IRoot lookup. G502's OS-level connect path
+        skips REPROG_V4 divert but still needs it so the sidebar can
+        show the same charge G Hub reports.
+        """
+        batt_fi = self._find_feature(FEAT_UNIFIED_BATT, timeout_ms=timeout_ms)
+        if batt_fi:
+            self._battery_idx = batt_fi
+            self._battery_feature_id = FEAT_UNIFIED_BATT
+            print(f"[HidGesture] Found UNIFIED_BATT @0x{batt_fi:02X}")
+            return True
+        batt_fi = self._find_feature(FEAT_BATTERY_STATUS, timeout_ms=timeout_ms)
+        if batt_fi:
+            self._battery_idx = batt_fi
+            self._battery_feature_id = FEAT_BATTERY_STATUS
+            print(f"[HidGesture] Found BATTERY_STATUS @0x{batt_fi:02X}")
+            return True
+        self._battery_idx = None
+        self._battery_feature_id = None
+        return False
+
+    def _query_device_name(self, timeout_ms=2000):
         """Query device name via HID++ feature 0x0005 (DEVICE_NAME_TYPE)."""
-        name_idx = self._find_feature(FEAT_DEVICE_NAME)
+        name_idx = self._find_feature(FEAT_DEVICE_NAME, timeout_ms=timeout_ms)
         if name_idx is None:
             return None
-        resp = self._request(name_idx, 0, [0x00] * 3)
+        resp = self._request(name_idx, 0, [0x00] * 3, timeout_ms=timeout_ms)
         if not resp:
             return None
         _, _, _, _, params = resp
@@ -1539,7 +1567,9 @@ class HidGestureListener:
         name_bytes = []
         offset = 0
         while offset < name_len:
-            resp = self._request(name_idx, 1, [offset, 0x00, 0x00])
+            resp = self._request(
+                name_idx, 1, [offset, 0x00, 0x00], timeout_ms=timeout_ms
+            )
             if not resp:
                 break
             _, _, _, _, chunk = resp
@@ -2861,8 +2891,10 @@ class HidGestureListener:
         dev_idx ordering so the previously-working interface is probed
         first with a tight 400 ms REPROG_V4 timeout. Cold path falls
         back to the default direct-then-receiver scan with the same
-        per-slot timeout. On divert success the working tuple is
-        persisted so the next launch hits the warm path."""
+        per-slot timeout. G502 devices are identified by their HID++ name
+        and connected without diverting controls so Windows-level button
+        mappings remain active. Successful connections are persisted so the
+        next launch hits the warm path."""
         infos = self._vendor_hid_infos()
         if not infos:
             return False
@@ -2929,21 +2961,28 @@ class HidGestureListener:
 
         for info in infos:
             cand_key = _candidate_cooldown_key(info)
-            if skip_cooled and cand_key in cooled:
+            pid = int(info.get("product_id", 0) or 0)
+            device_spec = resolve_device(
+                product_id=pid,
+                product_name=info.get("product_string"),
+            )
+            is_g502_probe = (
+                pid == LIGHTSPEED_RECEIVER_PID
+                or is_g502_family_layout(getattr(device_spec, "ui_layout", None))
+            )
+            if skip_cooled and cand_key in cooled and not is_g502_probe:
                 print(
                     "[HidGesture] Skipping recently-incompatible interface "
-                    f"PID=0x{int(info.get('product_id', 0) or 0):04X} "
+                    f"PID=0x{pid:04X} "
                     "(no REPROG_V4; cooling down)"
                 )
                 continue
-            pid = info.get("product_id", 0)
             up = info.get("usage_page", 0)
             usage = info.get("usage", 0)
             product = info.get("product_string")
             source = info.get("source", "unknown")
             # Snapshot before inner branches rebind `info` to HID++ responses.
             candidate_signature = _candidate_signature(info)
-            device_spec = resolve_device(product_id=pid, product_name=product)
             self._feat_idx = None
             self._dpi_idx = None
             self._smart_shift_idx = None
@@ -3041,12 +3080,12 @@ class HidGestureListener:
 
             # Narrow the device-index search based on transport:
             #  - BT candidates only use BT_DEV_IDX (0xFF)
-            #  - Bolt receivers only use slots 1-6
+            #  - Bolt and LIGHTSPEED receivers only use slots 1-6
             #  - Unknown: try all (BT first, then receiver slots)
             bt_opened = "bluetooth" in (opened_transport or "").lower()
             if bt_opened:
                 default_idx_order = (BT_DEV_IDX,)
-            elif pid == BOLT_RECEIVER_PID:
+            elif pid in (BOLT_RECEIVER_PID, LIGHTSPEED_RECEIVER_PID):
                 default_idx_order = (1, 2, 3, 4, 5, 6)
             else:
                 default_idx_order = (BT_DEV_IDX, 1, 2, 3, 4, 5, 6)
@@ -3070,6 +3109,94 @@ class HidGestureListener:
             hidpp_name = None
             for idx in idx_order:
                 self._dev_idx = idx
+
+                # G502 X family buttons that Windows already receives must
+                # stay on the normal OS input path. Do not require a gesture
+                # CID or divert REPROG_CONTROLS_V4: G502 firmware exposes
+                # button assignments through onboard profiles, while Mouser
+                # can still remap standard mouse events in software.
+                is_g502_receiver = pid == LIGHTSPEED_RECEIVER_PID
+                is_g502_direct = is_g502_family_layout(
+                    getattr(device_spec, "ui_layout", None)
+                )
+                if is_g502_receiver or is_g502_direct:
+                    hidpp_name = self._query_device_name(timeout_ms=350)
+                    named_spec = resolve_device(
+                        product_id=None if is_g502_receiver else pid,
+                        product_name=hidpp_name,
+                    )
+                    if named_spec is None and is_g502_direct:
+                        # A directly enumerated G502 product ID is sufficient
+                        # to identify the mouse when its name feature is absent.
+                        named_spec = device_spec
+                    if is_g502_family_layout(getattr(named_spec, "ui_layout", None)):
+                        device_spec = named_spec
+                        self._feat_idx = None
+                        self._gesture_cid = DEFAULT_GESTURE_CID
+                        self._gesture_candidates = []
+                        self._last_controls = []
+                        self._discover_battery_feature(timeout_ms=400)
+                        if idx == BT_DEV_IDX:
+                            actual_transport = "Bluetooth"
+                        elif pid == BOLT_RECEIVER_PID:
+                            actual_transport = "Logi Bolt"
+                        else:
+                            actual_transport = "USB Receiver"
+                        identified_name = (
+                            hidpp_name
+                            or getattr(device_spec, "display_name", None)
+                            or product
+                        )
+                        connected_info = build_connected_device_info(
+                            product_id=pid,
+                            product_name=identified_name,
+                            transport=actual_transport,
+                            source=source,
+                            gesture_cids=(),
+                            reprog_controls=(),
+                            active_gesture_cid=None,
+                            gesture_rawxy_enabled=False,
+                            discovered_features=self._discovered_feature_inventory(),
+                            device_identity={
+                                "device_index": self._dev_idx,
+                                "usage_page": opened_up,
+                                "usage": opened_usage,
+                                "backend": transport,
+                                "hid_module": _HID_MODULE_NAME or "",
+                                "device_path": opened_path,
+                            },
+                            has_hires_wheel=False,
+                            has_thumbwheel=False,
+                            hires_wheel_active=False,
+                            thumbwheel_active=False,
+                            thumb_button_via_hid=False,
+                        )
+                        # The catalog groups G502 X variants under one family
+                        # key; retain the actual HID++ name in the status UI.
+                        self._connected_device_info = _dataclass_replace(
+                            connected_info,
+                            display_name=identified_name or connected_info.display_name,
+                        )
+                        print(
+                            f"[HidGesture] Identified {identified_name!r} "
+                            f"@devIdx=0x{idx:02X}; using OS-level button mapping "
+                            "without diverting mouse controls"
+                        )
+                        try:
+                            _save_last_device_cache(
+                                candidate=candidate_signature,
+                                device={
+                                    "name": identified_name,
+                                    "dev_idx": int(idx),
+                                    "transport": actual_transport,
+                                    "feat_idx_reprog": None,
+                                },
+                            )
+                        except Exception as exc:
+                            print(f"[HidGesture] Cache write skipped: {exc}")
+                        self._reprog_absent_until.pop(cand_key, None)
+                        return True
+
                 fi = self._find_feature(FEAT_REPROG_V4, timeout_ms=400)
                 if fi is not None:
                     reprog_found = True
@@ -3133,17 +3260,7 @@ class HidGestureListener:
                                 f"[HidGesture] Found wheel feature "
                                 f"0x{wheel_feature:04X} @0x{wheel_fi:02X}"
                             )
-                    batt_fi = self._find_feature(FEAT_UNIFIED_BATT)
-                    if batt_fi:
-                        self._battery_idx = batt_fi
-                        self._battery_feature_id = FEAT_UNIFIED_BATT
-                        print(f"[HidGesture] Found UNIFIED_BATT @0x{batt_fi:02X}")
-                    else:
-                        batt_fi = self._find_feature(FEAT_BATTERY_STATUS)
-                        if batt_fi:
-                            self._battery_idx = batt_fi
-                            self._battery_feature_id = FEAT_BATTERY_STATUS
-                            print(f"[HidGesture] Found BATTERY_STATUS @0x{batt_fi:02X}")
+                    self._discover_battery_feature()
                     # Haptic Feedback (MX Master 4)
                     haptic_fi = self._find_feature(FEAT_HAPTIC)
                     if haptic_fi:
@@ -3367,6 +3484,14 @@ class HidGestureListener:
                         raise IOError("reconnect requested")
 
                     if self._consecutive_request_timeouts >= _CONSECUTIVE_TIMEOUT_RECONNECT:
+                        # G502 uses ordinary OS mouse events, not diverted
+                        # HID++ gestures. Waiting for a gesture notification
+                        # can leave it "disconnected" for the full sleep
+                        # timeout even after the user switches it back on.
+                        # Reopen/reprobe instead; retain notification-based
+                        # wake handling for MX devices.
+                        if is_g502_family_layout(getattr(self._connected_device_info, "ui_layout", None)):
+                            raise IOError("G502 unresponsive; reprobe receiver for wake")
                         if not _device_asleep:
                             _device_asleep = True
                             _device_sleep_time = time.monotonic()

@@ -13,6 +13,7 @@ from core.logi_devices import (
     clamp_dpi,
     derive_supported_buttons_from_reprog_controls,
     get_buttons_for_layout,
+    is_g502_family_layout,
     iter_known_devices,
     resolve_device,
 )
@@ -317,7 +318,17 @@ class LogiDeviceRegistryTests(unittest.TestCase):
         device = resolve_device(product_name="G502 X PLUS")
 
         self.assertIsNotNone(device)
-        self.assertEqual(device.key, "g502_x")
+        self.assertEqual(device.key, "g502_x_plus")
+        self.assertEqual(device.ui_layout, "g502_x_plus")
+        self.assertTrue(is_g502_family_layout(device.ui_layout))
+
+    def test_g502_family_layout_covers_plus_and_excludes_mx(self):
+        self.assertTrue(is_g502_family_layout("g502"))
+        self.assertTrue(is_g502_family_layout("g502_x"))
+        self.assertTrue(is_g502_family_layout("g502_x_plus"))
+        self.assertFalse(is_g502_family_layout("mx_master_4"))
+        self.assertFalse(is_g502_family_layout(None))
+        self.assertFalse(is_g502_family_layout(""))
 
     def test_resolve_g502_x_plus_by_product_id(self):
         for product_id in (0xC095, 0x4099):
@@ -325,7 +336,7 @@ class LogiDeviceRegistryTests(unittest.TestCase):
                 device = resolve_device(product_id=product_id)
 
                 self.assertIsNotNone(device)
-                self.assertEqual(device.key, "g502_x")
+                self.assertEqual(device.key, "g502_x_plus")
 
     def test_resolve_g502_proteus_by_reported_name(self):
         device = resolve_device(product_name="Tunable FPS Gaming Mouse G502")
@@ -353,6 +364,24 @@ class LogiDeviceRegistryTests(unittest.TestCase):
         self.assertEqual(layout["key"], "g502")
         self.assertFalse(layout["interactive"])
         self.assertEqual(layout["hotspots"], [])
+
+    def test_g502_x_plus_has_device_art_and_onboard_buttons(self):
+        device = resolve_device(product_name="G502 X PLUS")
+        layout = get_device_layout(device.ui_layout)
+        buttons = get_buttons_for_layout("g502_x_plus")
+        hotspot_keys = {hotspot["buttonKey"] for hotspot in layout["hotspots"]}
+
+        self.assertEqual(device.image_asset, "logitech-mice/g502_x_plus/mouse.png")
+        self.assertTrue(layout["interactive"])
+        self.assertEqual(layout["image_asset"], device.image_asset)
+        self.assertGreaterEqual(len(layout["hotspots"]), 4)
+        self.assertIn("g502_dpi_up", hotspot_keys)
+        self.assertIn("g502_dpi_down", hotspot_keys)
+        self.assertIn("g502_profile", hotspot_keys)
+        self.assertNotIn("hscroll_left", hotspot_keys)
+        self.assertIn("g502_dpi_up", buttons)
+        self.assertIn("g502_dpi_shift", buttons)
+        self.assertNotIn("gesture", buttons)
 
     def test_build_g502_hero_connected_info(self):
         info = build_connected_device_info(

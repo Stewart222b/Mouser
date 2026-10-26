@@ -70,19 +70,28 @@ MX_ANYWHERE_SMARTSHIFT_BUTTONS = (
     "mode_shift",
 )
 
-# G502 family (G-series gaming mice). These run onboard profiles and do not
-# expose REPROG_CONTROLS_V4 (0x1B04), so HID++ button diversion -- gesture,
-# mode_shift, dpi_switch -- is unavailable. The buttons below are the ones the
-# firmware emits as standard OS events in its default profile: middle click,
-# back/forward side buttons, and wheel tilt left/right. The DPI up/down and
-# sniper buttons are consumed onboard and never reach the OS. ADJUSTABLE_DPI
-# (0x2201) is exposed, so the DPI slider works.
+# G502 family (G-series gaming mice). Button assignments are managed by
+# onboard profiles; depending on firmware, REPROG_CONTROLS_V4 may be absent or
+# may expose only receiver controls. The buttons below are the standard OS
+# events emitted by the default profile: middle click, back/forward side
+# buttons, and wheel tilt left/right. DPI up/down and sniper are handled by
+# the onboard profile and cannot be mapped by Mouser until profile support is
+# implemented.
 G502_BUTTONS = (
     "middle",
     "xbutton1",
     "xbutton2",
     "hscroll_left",
     "hscroll_right",
+)
+
+# G502 X PLUS keeps the OS-level G502 set and adds the onboard-only
+# controls that never reach Windows: G7/G8 DPI, G9 profile, and DPI Shift.
+G502_X_PLUS_BUTTONS = G502_BUTTONS + (
+    "g502_dpi_up",
+    "g502_dpi_down",
+    "g502_profile",
+    "g502_dpi_shift",
 )
 
 # M650 Signature family: no horizontal scroll, no mode-shift, no dedicated gesture button.
@@ -134,6 +143,24 @@ def _hotspot(
     }
 
 
+def _view(
+    view_id: str,
+    label: str,
+    image_asset: str,
+    image_width: int,
+    image_height: int,
+    hotspots: list[dict[str, object]],
+) -> dict[str, object]:
+    return {
+        "id": view_id,
+        "label": label,
+        "image_asset": image_asset,
+        "image_width": image_width,
+        "image_height": image_height,
+        "hotspots": hotspots,
+    }
+
+
 def _layout(
     key: str,
     label: str,
@@ -143,8 +170,10 @@ def _layout(
     hotspots: list[dict[str, object]],
     *,
     manual_selectable: bool = False,
+    views: list[dict[str, object]] | None = None,
+    hscroll_in_middle: bool = False,
 ) -> dict[str, object]:
-    return {
+    payload = {
         "key": key,
         "label": label,
         "image_asset": image_asset,
@@ -154,7 +183,16 @@ def _layout(
         "manual_selectable": manual_selectable,
         "note": "",
         "hotspots": hotspots,
+        "views": list(views or ()),
+        "hscroll_in_middle": hscroll_in_middle,
     }
+    if views:
+        first = views[0]
+        payload["image_asset"] = first["image_asset"]
+        payload["image_width"] = first["image_width"]
+        payload["image_height"] = first["image_height"]
+        payload["hotspots"] = first["hotspots"]
+    return payload
 
 
 LOGI_DEVICE_SPECS = (
@@ -370,13 +408,26 @@ LOGI_DEVICE_SPECS = (
         "dpi_max": 25600,
     },
     {
+        "key": "g502_x_plus",
+        "display_name": "G502 X PLUS",
+        "product_ids": (0xC095, 0x4099),
+        "aliases": (
+            "G502 X PLUS",
+            "G502 X PLUS Wireless RGB Gaming Mouse",
+        ),
+        "ui_layout": "g502_x_plus",
+        "image_asset": "logitech-mice/g502_x_plus/mouse.png",
+        "supported_buttons": G502_X_PLUS_BUTTONS,
+        "dpi_min": 100,
+        "dpi_max": 25600,
+    },
+    {
         "key": "g502_x",
         "display_name": "G502 X",
-        "product_ids": (0xC099, 0xC098, 0xC095, 0x409F, 0x4099),
+        "product_ids": (0xC099, 0xC098, 0x409F),
         "aliases": (
             "G502 X Gaming Mouse",
             "G502 X LIGHTSPEED",
-            "G502 X PLUS",
         ),
         "ui_layout": "g502",
         "image_asset": "icons/mouse-simple.svg",
@@ -508,6 +559,108 @@ LOGI_DEVICE_LAYOUTS = {
         ),
         "hotspots": [],
     },
+    # G502 X PLUS: G Hub-style two views. Wheel tilt is edited on the
+    # middle-click row, not as its own hotspot.
+    "g502_x_plus": _layout(
+        "g502_x_plus",
+        "G502 X PLUS",
+        "logitech-mice/g502_x_plus/mouse.png",
+        256,
+        432,
+        [],
+        manual_selectable=True,
+        hscroll_in_middle=True,
+        views=[
+            _view(
+                "top",
+                "Front",
+                "logitech-mice/g502_x_plus/mouse.png",
+                256,
+                432,
+                [
+                    _hotspot(
+                        "g502_dpi_up",
+                        "DPI up (G8)",
+                        "mapping",
+                        0.253,
+                        0.209,
+                        label_side="left",
+                        label_off_x=-80,
+                        label_off_y=-18,
+                    ),
+                    _hotspot(
+                        "g502_dpi_down",
+                        "DPI down (G7)",
+                        "mapping",
+                        0.211,
+                        0.354,
+                        label_side="left",
+                        label_off_x=-80,
+                        label_off_y=22,
+                    ),
+                    _hotspot(
+                        "middle",
+                        "Middle button",
+                        "mapping",
+                        0.571,
+                        0.271,
+                        label_side="right",
+                        label_off_x=85,
+                        label_off_y=-40,
+                    ),
+                    _hotspot(
+                        "g502_profile",
+                        "Profile button (G9)",
+                        "mapping",
+                        0.571,
+                        0.473,
+                        label_side="right",
+                        label_off_x=80,
+                        label_off_y=20,
+                    ),
+                ],
+            ),
+            _view(
+                "side",
+                "Side",
+                "logitech-mice/g502_x_plus/side.png",
+                520,
+                243,
+                [
+                    _hotspot(
+                        "g502_dpi_shift",
+                        "DPI Shift button",
+                        "mapping",
+                        0.377,
+                        0.697,
+                        label_side="left",
+                        label_off_x=-90,
+                        label_off_y=24,
+                    ),
+                    _hotspot(
+                        "xbutton2",
+                        "Forward button",
+                        "mapping",
+                        0.479,
+                        0.474,
+                        label_side="right",
+                        label_off_x=90,
+                        label_off_y=-32,
+                    ),
+                    _hotspot(
+                        "xbutton1",
+                        "Back button",
+                        "mapping",
+                        0.622,
+                        0.425,
+                        label_side="right",
+                        label_off_x=90,
+                        label_off_y=22,
+                    ),
+                ],
+            ),
+        ],
+    ),
     "mx_master_4": _layout(
         "mx_master_4",
         "MX Master 4",

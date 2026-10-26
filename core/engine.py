@@ -167,6 +167,15 @@ class Engine:
         HID listener thread (see ``_on_connection_change``).
         """
         mappings = get_active_mappings(self.cfg)
+        # G502 X PLUS uses onboard assignments exclusively. Suspend legacy
+        # software bindings without deleting profiles shared with other mice.
+        device = self.connected_device
+        onboard_only = (getattr(device, "key", "") == "g502_x_plus"
+                        or getattr(device, "product_name", "") == "G502 X PLUS"
+                        or getattr(device, "display_name", "") == "G502 X PLUS")
+        if onboard_only:
+            mappings = {}
+
 
         # Apply scroll inversion settings to the hook
         settings = self.cfg.get("settings", {})
@@ -254,7 +263,7 @@ class Engine:
         # gate). No device connected yet -> arm nothing; _on_connection_change
         # re-runs _setup_hooks once supported_buttons is known.
         active_button_gesture_owners = (
-            set() if device_buttons is None
+            set() if device_buttons is None or onboard_only
             else button_gesture_owners(self.cfg, device_buttons)
         )
         if hasattr(self.hook, "configure_button_gestures"):

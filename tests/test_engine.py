@@ -807,3 +807,21 @@ class SettingsLatencyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class G502LegacyMappingTests(unittest.TestCase):
+    _make_engine = EngineHorizontalScrollTests._make_engine
+    def test_only_plus_suspends_legacy_mappings_without_deleting_config(self):
+        engine = self._make_engine()
+        cfg = copy.deepcopy(engine.cfg)
+        with patch.object(type(engine), 'connected_device', new_callable=unittest.mock.PropertyMock) as device:
+            device.return_value = SimpleNamespace(key='g502_x_plus', supported_buttons=('middle','xbutton1'))
+            with patch.object(engine.hook, 'register') as register, patch.object(engine.hook, 'block') as block:
+                engine._setup_hooks(defer_wheel_invert=True)
+                register.assert_not_called()
+                block.assert_not_called()
+            self.assertEqual(engine.cfg, cfg)
+            device.return_value = SimpleNamespace(key='mx_master_4', supported_buttons=('middle','xbutton1'))
+            with patch.object(engine.hook, 'register') as register:
+                engine._setup_hooks(defer_wheel_invert=True)
+                self.assertTrue(register.called)

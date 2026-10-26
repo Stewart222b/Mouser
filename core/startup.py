@@ -5,7 +5,7 @@ import plistlib
 import shutil
 import subprocess
 import sys
-import tempfile
+from core.atomic_file import create_atomic_temp
 
 # Windows
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
@@ -373,7 +373,7 @@ def _launchctl_failure_message(action: str, result: subprocess.CompletedProcess)
 def _atomic_write_file(path: str, data: bytes) -> None:
     directory = os.path.dirname(path) or "."
     prefix = f".{os.path.basename(path)}."
-    fd, tmp_path = tempfile.mkstemp(prefix=prefix, suffix=".tmp", dir=directory)
+    fd, tmp_path = create_atomic_temp(prefix=prefix, suffix=".tmp", dir=directory)
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(data)

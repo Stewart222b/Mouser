@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 
-_DEFAULT_APP_VERSION = "3.8.13"
+_DEFAULT_APP_VERSION = "3.8.13-rc.1"
 _BUILD_INFO_FILENAME = "mouser_build_info.json"
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 

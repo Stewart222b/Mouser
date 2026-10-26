@@ -43,6 +43,9 @@ ApplicationWindow {
         if (backend.deviceHasActionsRing && backend.actionsRingActive) {
             items.push({ icon: "target", tipKey: "nav.actions_ring", page: 3 })
         }
+        if (backend.g502.supported) {
+            items.push({ icon: "lightning", tipKey: "light.title", page: 5 })
+        }
         return items
     }
 
@@ -169,6 +172,7 @@ ApplicationWindow {
                 active: root.currentPage === 4 || item
                 sourceComponent: Component { ScrollPage { applicationSettings: true } }
             }
+            Loader { active: (root.currentPage === 5 || item) && backend.g502.supported; source: "LightingPage.qml" }
         }
     }
 

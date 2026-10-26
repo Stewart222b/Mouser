@@ -23,6 +23,7 @@ import zipfile
 
 from core.updater import DEFAULT_RELEASE_REPO
 from core.version import APP_VERSION
+from core.atomic_file import create_atomic_temp
 
 
 APP_ID = "io.github.stewart222b.mouser"
@@ -551,7 +552,7 @@ def same_volume_windows_stage_dir(
 
 def _probe_directory_writable(directory: Path) -> bool:
     try:
-        handle, marker = tempfile.mkstemp(
+        handle, marker = create_atomic_temp(
             prefix=".mouser-update-write-test-",
             dir=str(directory),
         )
